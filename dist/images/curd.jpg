@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="450" viewBox="0 0 600 450">
+  <defs>
+    <linearGradient id="bg_curd" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FAFAFA" />
+      <stop offset="100%" stop-color="#E0E0E0" />
+    </linearGradient>
+    <linearGradient id="badge_curd" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#1b5e20" />
+      <stop offset="100%" stop-color="#2e7d32" />
+    </linearGradient>
+  </defs>
+
+  <rect width="600" height="450" fill="url(#bg_curd)" rx="16" />
+
+  <circle cx="500" cy="80" r="140" fill="#ffffff" opacity="0.3" />
+  <circle cx="80" cy="380" r="160" fill="#ffffff" opacity="0.3" />
+
+  <rect x="150" y="70" width="300" height="230" fill="#ffffff" rx="20" opacity="0.95" />
+  
+  <text x="300" y="195" font-size="90" text-anchor="middle" dominant-baseline="middle">🥣</text>
+
+  <text x="300" y="350" font-family="Arial, sans-serif" font-size="32" font-weight="bold" fill="#2E7D32" text-anchor="middle">Curd (Dahi)</text>
+  <text x="300" y="385" font-family="Arial, sans-serif" font-size="17" font-weight="bold" fill="#444444" text-anchor="middle">Pure Creamy Set Dahi</text>
+
+  <rect x="20" y="20" width="160" height="36" fill="url(#badge_curd)" rx="18" />
+  <text x="100" y="43" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="#ffffff" text-anchor="middle">100% PURE DAIRY</text>
+</svg>
