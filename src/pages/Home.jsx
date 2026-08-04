@@ -153,7 +153,7 @@ export const Home = () => {
                   style={{ width: '100%', height: '340px', objectFit: 'contain', borderRadius: '16px', background: '#fffefb' }}
                   onError={(e) => {
                     e.target.onerror = null;
-                    e.target.src = '/images/placeholder.svg';
+                    e.target.src = '/images/placeholder.jpg';
                   }}
                 />
                 <div style={{ padding: '12px 8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

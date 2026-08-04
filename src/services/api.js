@@ -14,7 +14,7 @@ export const FALLBACK_PRODUCTS = [
     "retailPrice": 360,
     "wholesalePrice": 330,
     "unit": "1 kg",
-    "image": "/images/peda.svg",
+    "image": "/images/peda.jpg",
     "description": "Traditional fresh milk sweet made daily from pure condensed milk.",
     "inStock": true,
     "isPlaceholderPrice": false
@@ -26,7 +26,7 @@ export const FALLBACK_PRODUCTS = [
     "retailPrice": 380,
     "wholesalePrice": 350,
     "unit": "1 kg",
-    "image": "/images/khova.svg",
+    "image": "/images/khova.jpg",
     "description": "Pure fresh unsweetened mawa/khova ideal for festive sweets and cooking.",
     "inStock": true,
     "isPlaceholderPrice": false
@@ -38,7 +38,7 @@ export const FALLBACK_PRODUCTS = [
     "retailPrice": 300,
     "wholesalePrice": 270,
     "unit": "1 kg",
-    "image": "/images/basundi.svg",
+    "image": "/images/basundi.jpg",
     "description": "Rich, thickened sweetened milk flavoured with cardamom and dry fruits.",
     "inStock": true,
     "isPlaceholderPrice": false
@@ -50,7 +50,7 @@ export const FALLBACK_PRODUCTS = [
     "retailPrice": 300,
     "wholesalePrice": 270,
     "unit": "1 kg",
-    "image": "/images/kalakand.svg",
+    "image": "/images/kalakand.jpg",
     "description": "Soft, granular milk cake sweet made from fresh paneer and pure milk.",
     "inStock": true,
     "isPlaceholderPrice": false
@@ -62,7 +62,7 @@ export const FALLBACK_PRODUCTS = [
     "retailPrice": 90,
     "wholesalePrice": 80,
     "unit": "1 kg",
-    "image": "/images/curd.svg",
+    "image": "/images/curd.jpg",
     "description": "Thick, creamy set curd prepared from fresh whole milk.",
     "inStock": true,
     "isPlaceholderPrice": false
@@ -74,7 +74,7 @@ export const FALLBACK_PRODUCTS = [
     "retailPrice": 250,
     "wholesalePrice": 220,
     "unit": "1 kg",
-    "image": "/images/shrikhand.svg",
+    "image": "/images/shrikhand.jpg",
     "description": "Strained yogurt dessert infused with saffron, cardamom, and nuts.",
     "inStock": true,
     "isPlaceholderPrice": true
@@ -86,7 +86,7 @@ export const FALLBACK_PRODUCTS = [
     "retailPrice": 350,
     "wholesalePrice": 320,
     "unit": "1 kg",
-    "image": "/images/milk_cake.svg",
+    "image": "/images/milk_cake.jpg",
     "description": "Classic caramelized dense milk sweet with a rich grainy texture.",
     "inStock": true,
     "isPlaceholderPrice": true
@@ -98,7 +98,7 @@ export const FALLBACK_PRODUCTS = [
     "retailPrice": 60,
     "wholesalePrice": 52,
     "unit": "1 litre",
-    "image": "/images/milk.svg",
+    "image": "/images/milk.jpg",
     "description": "Farm fresh, pure unadulterated whole milk packed daily.",
     "inStock": true,
     "isPlaceholderPrice": true
@@ -110,7 +110,7 @@ export const FALLBACK_PRODUCTS = [
     "retailPrice": 350,
     "wholesalePrice": 310,
     "unit": "1 kg",
-    "image": "/images/kunda.svg",
+    "image": "/images/kunda.jpg",
     "description": "Belagavi famous traditional milk sweet cooked slow for intense caramel flavor.",
     "inStock": true,
     "isPlaceholderPrice": true
@@ -122,7 +122,7 @@ export const FALLBACK_PRODUCTS = [
     "retailPrice": 600,
     "wholesalePrice": 550,
     "unit": "1 kg",
-    "image": "/images/ghee.svg",
+    "image": "/images/ghee.jpg",
     "description": "100% pure granular aromatic desi cow ghee made by traditional process.",
     "inStock": true,
     "isPlaceholderPrice": true
@@ -134,7 +134,7 @@ export const FALLBACK_PRODUCTS = [
     "retailPrice": 40,
     "wholesalePrice": 35,
     "unit": "1 glass",
-    "image": "/images/lassi.svg",
+    "image": "/images/lassi.jpg",
     "description": "Refreshing churned sweet yogurt drink served chilled with malai top.",
     "inStock": true,
     "isPlaceholderPrice": true
@@ -146,7 +146,7 @@ export const FALLBACK_PRODUCTS = [
     "retailPrice": 320,
     "wholesalePrice": 290,
     "unit": "1 kg",
-    "image": "/images/paneer.svg",
+    "image": "/images/paneer.jpg",
     "description": "Soft, fresh cottage cheese packed with natural milk proteins.",
     "inStock": true,
     "isPlaceholderPrice": true
@@ -158,7 +158,7 @@ export const FALLBACK_PRODUCTS = [
     "retailPrice": 450,
     "wholesalePrice": 410,
     "unit": "1 kg",
-    "image": "/images/butter.svg",
+    "image": "/images/butter.jpg",
     "description": "Pure cream churned white/yellow butter rich in natural taste.",
     "inStock": true,
     "isPlaceholderPrice": true
@@ -272,18 +272,14 @@ export const updateOrderStatus = async (id, status, adminPassword) => {
 
 // Contact Form API
 export const sendContactMessage = async (contactData) => {
-  try {
-    const res = await fetch(`${API_BASE}/contact`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(contactData)
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || 'Failed to send message');
-    return data;
-  } catch (err) {
-    return { success: true, message: 'Thank you! Your message has been received.' };
-  }
+  const res = await fetch(`${API_BASE}/contact`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(contactData)
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Failed to send message');
+  return data;
 };
 
 export const fetchContactMessages = async (adminPassword) => {

@@ -78,7 +78,7 @@ export const ProductModal = ({ product, onClose }) => {
               style={{ width: '100%', height: '100%', objectFit: 'cover' }}
               onError={(e) => {
                 e.target.onerror = null;
-                e.target.src = '/images/placeholder.svg';
+                e.target.src = '/images/placeholder.jpg';
               }}
             />
           </div>

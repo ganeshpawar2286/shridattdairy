@@ -11,6 +11,9 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 5000;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
+const WHATSAPP_ACCESS_TOKEN = process.env.WHATSAPP_ACCESS_TOKEN || '';
+const WHATSAPP_PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID || '';
+const WHATSAPP_OWNER_NUMBER = process.env.WHATSAPP_OWNER_NUMBER || '917795687471';
 
 // Middleware
 app.use(cors());
@@ -82,6 +85,69 @@ const writeJSON = (filePath, data) => {
     console.error(`Error writing ${filePath}:`, err);
     return false;
   }
+};
+
+const buildOrderStatusMessage = (order, status) => {
+  const normalizedStatus = String(status || '').toLowerCase();
+  if (normalizedStatus === 'confirmed') {
+    return `Hello ${order.customerName}, your order ${order.id} has been confirmed. We will prepare it for delivery shortly.`;
+  }
+  if (normalizedStatus === 'cancelled') {
+    return `Hello ${order.customerName}, your order ${order.id} has been cancelled. Please contact us if you need any help.`;
+  }
+  if (normalizedStatus === 'delivered') {
+    return `Hello ${order.customerName}, your order ${order.id} has been delivered successfully. Thank you for shopping with us.`;
+  }
+  return `Hello ${order.customerName}, your order ${order.id} status has been updated to ${status}.`;
+};
+
+const buildContactMessage = (contact) => (
+  `New contact message from ${contact.name} (${contact.phone}): ${contact.message}`
+);
+
+const sendWhatsAppText = async (toNumber, body) => {
+  if (!WHATSAPP_ACCESS_TOKEN || !WHATSAPP_PHONE_NUMBER_ID) {
+    return { success: false, skipped: true, message: 'WhatsApp Cloud API is not configured.' };
+  }
+
+  const phoneNumber = String(toNumber || '').replace(/\D/g, '');
+  if (!phoneNumber) {
+    return { success: false, skipped: true, message: 'Phone number missing.' };
+  }
+
+  const normalizedNumber = phoneNumber.startsWith('91') ? phoneNumber : `91${phoneNumber}`;
+
+  try {
+    const response = await fetch(`https://graph.facebook.com/v20.0/${WHATSAPP_PHONE_NUMBER_ID}/messages`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${WHATSAPP_ACCESS_TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        to: normalizedNumber,
+        type: 'text',
+        text: {
+          preview_url: false,
+          body
+        }
+      })
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      return { success: false, message: data?.error?.message || 'Failed to send WhatsApp notification.' };
+    }
+
+    return { success: true, messageId: data?.messages?.[0]?.id || null };
+  } catch (err) {
+    return { success: false, message: err.message || 'Failed to send WhatsApp notification.' };
+  }
+};
+
+const sendWhatsAppNotification = async (order, status) => {
+  return sendWhatsAppText(order.phone, buildOrderStatusMessage(order, status));
 };
 
 // Admin authentication middleware helper
@@ -233,7 +299,17 @@ app.put('/api/admin/orders/:id', checkAuth, (req, res) => {
 
   orders[index].status = req.body.status || orders[index].status;
   writeJSON(ORDERS_FILE, orders);
-  res.json({ success: true, order: orders[index] });
+  sendWhatsAppNotification(orders[index], orders[index].status)
+    .then((notification) => {
+      res.json({ success: true, order: orders[index], notification });
+    })
+    .catch((err) => {
+      res.json({
+        success: true,
+        order: orders[index],
+        notification: { success: false, message: err.message || 'Failed to send WhatsApp notification.' }
+      });
+    });
 });
 
 // 10. Submit Contact Form (Public)
@@ -256,7 +332,21 @@ app.post('/api/contact', (req, res) => {
 
   contacts.unshift(newContact);
   writeJSON(CONTACTS_FILE, contacts);
-  res.status(201).json({ success: true, message: 'Thank you! Your message has been sent successfully.' });
+  sendWhatsAppText(WHATSAPP_OWNER_NUMBER, buildContactMessage(newContact))
+    .then((notification) => {
+      res.status(201).json({
+        success: true,
+        message: 'Thank you! Your message has been sent successfully.',
+        notification
+      });
+    })
+    .catch((err) => {
+      res.status(201).json({
+        success: true,
+        message: 'Thank you! Your message has been sent successfully.',
+        notification: { success: false, message: err.message || 'Failed to send WhatsApp notification.' }
+      });
+    });
 });
 
 // 11. Get Contact Messages (Admin)

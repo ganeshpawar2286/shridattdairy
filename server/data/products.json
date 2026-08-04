@@ -69,7 +69,7 @@
     "image": "/images/shrikhand_recipe_1785690285942.jpg",
     "description": "Strained yogurt dessert infused with saffron, cardamom, and nuts.",
     "inStock": true,
-    "isPlaceholderPrice": true
+    "isPlaceholderPrice": false
   },
   {
     "id": "prod-7",
@@ -81,7 +81,7 @@
     "image": "/images/milkcake_1785690470015.jpg",
     "description": "Classic caramelized dense milk sweet with a rich grainy texture.",
     "inStock": true,
-    "isPlaceholderPrice": true
+    "isPlaceholderPrice": false
   },
   {
     "id": "prod-8",
@@ -105,7 +105,7 @@
     "image": "/images/kunda_1785690510715.jpg",
     "description": "Belagavi famous traditional milk sweet cooked slow for intense caramel flavor.",
     "inStock": true,
-    "isPlaceholderPrice": true
+    "isPlaceholderPrice": false
   },
   {
     "id": "prod-10",

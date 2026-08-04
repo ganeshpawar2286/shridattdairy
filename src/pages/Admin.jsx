@@ -87,6 +87,29 @@ export const Admin = () => {
     }
   }, [isAuthenticated]);
 
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const refreshOnVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        loadAdminData();
+      }
+    };
+
+    const refreshTimer = window.setInterval(() => {
+      loadAdminData();
+    }, 15000);
+
+    window.addEventListener('focus', refreshOnVisibility);
+    document.addEventListener('visibilitychange', refreshOnVisibility);
+
+    return () => {
+      window.clearInterval(refreshTimer);
+      window.removeEventListener('focus', refreshOnVisibility);
+      document.removeEventListener('visibilitychange', refreshOnVisibility);
+    };
+  }, [isAuthenticated]);
+
   // Open Modal for Create or Edit
   const openAddModal = () => {
     setEditingProduct(null);
@@ -172,10 +195,28 @@ export const Admin = () => {
     }
   };
 
+  const openOrderWhatsAppMessage = (order, status) => {
+    const customerNumber = String(order.phone || '').replace(/\D/g, '');
+    if (!customerNumber) {
+      alert('Customer phone number is missing for this order.');
+      return;
+    }
+
+    const normalizedNumber = customerNumber.startsWith('91') ? customerNumber : `91${customerNumber}`;
+    const message = `Hello ${order.customerName}, your order ${order.id} has been ${status.toLowerCase()}. If you have any questions, reply to this message.`;
+    const whatsappUrl = `https://wa.me/${normalizedNumber}?text=${encodeURIComponent(message)}`;
+    window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+  };
+
   // Update Order Status
   const handleOrderStatusChange = async (orderId, newStatus) => {
     try {
       await updateOrderStatus(orderId, newStatus, getAdminPass());
+      const updatedOrder = orders.find(order => order.id === orderId);
+      if (updatedOrder) {
+        openOrderWhatsAppMessage(updatedOrder, newStatus);
+      }
+      setStatusMsg(`Order ${orderId} updated to ${newStatus}. WhatsApp chat opened for manual message sending.`);
       loadAdminData();
     } catch (err) {
       alert(err.message || 'Failed to update order status');

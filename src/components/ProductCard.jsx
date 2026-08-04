@@ -97,7 +97,7 @@ export const ProductCard = ({ product, onQuickView }) => {
           }}
           onError={(e) => {
             e.target.onerror = null;
-            e.target.src = '/images/placeholder.svg';
+            e.target.src = '/images/placeholder.jpg';
           }}
         />
       </div>
