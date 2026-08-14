@@ -1,0 +1,68 @@
+[
+  {
+    "id": "SDKAS-995527",
+    "createdAt": "2026-08-04T17:03:15.527Z",
+    "customerName": "darshan",
+    "phone": "7760657471",
+    "address": "KSSEM, KS BOYS HOSTEL\nNo.15, Mallasandra, Off. Kanakapura Road",
+    "orderType": "Retail",
+    "items": [
+      {
+        "productId": "prod-2",
+        "name": "Khova",
+        "unit": "1 kg",
+        "quantity": 1,
+        "unitPrice": 380,
+        "subtotal": 380
+      }
+    ],
+    "subtotal": 380,
+    "grandTotal": 380,
+    "paymentMethod": "Cash on Delivery",
+    "status": "Confirmed"
+  },
+  {
+    "id": "SDKAS-212270",
+    "createdAt": "2026-08-04T16:50:12.270Z",
+    "customerName": "ganesh pawar",
+    "phone": "7795687471",
+    "address": "KSSEM, KS BOYS HOSTEL\nNo.15, Mallasandra, Off. Kanakapura Road",
+    "orderType": "Retail",
+    "items": [
+      {
+        "productId": "prod-1",
+        "name": "Peda",
+        "unit": "1 kg",
+        "quantity": 1,
+        "unitPrice": 1,
+        "subtotal": 1
+      }
+    ],
+    "subtotal": 1,
+    "grandTotal": 1,
+    "paymentMethod": "Cash on Delivery",
+    "status": "Delivered"
+  },
+  {
+    "id": "SDKAS-744539",
+    "createdAt": "2026-08-04T08:39:04.539Z",
+    "customerName": "ganesh pawar",
+    "phone": "7795687471",
+    "address": "KSSEM, KS BOYS HOSTEL\nNo.15, Mallasandra, Off. Kanakapura Road",
+    "orderType": "Retail",
+    "items": [
+      {
+        "productId": "prod-1",
+        "name": "Peda",
+        "unit": "1 kg",
+        "quantity": 1,
+        "unitPrice": 1,
+        "subtotal": 1
+      }
+    ],
+    "subtotal": 1,
+    "grandTotal": 1,
+    "paymentMethod": "UPI Payment",
+    "status": "Confirmed"
+  }
+]

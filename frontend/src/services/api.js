@@ -1,9 +1,22 @@
-const API_BASE = '/api';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
 
-export const getAdminAuthHeader = (password) => ({
-  'Content-Type': 'application/json',
-  'x-admin-password': password || localStorage.getItem('sdkas_admin_pass') || ''
-});
+export const getAdminAuthHeader = () => {
+  const token = localStorage.getItem('admin_token') || localStorage.getItem('sdkas_admin_pass') || 'admin123';
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`,
+    'x-admin-token': token
+  };
+};
+
+export const getCustomerAuthHeader = () => {
+  const token = localStorage.getItem('customer_token') || '';
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`,
+    'x-customer-token': token
+  };
+};
 
 // Fallback initial products data in case backend server is unreachable
 export const FALLBACK_PRODUCTS = [
@@ -167,47 +180,70 @@ export const FALLBACK_PRODUCTS = [
 
 // --- AUTHENTICATION API ---
 
-// 1. Customer Register
-export const registerCustomer = async ({ name, emailOrMobile, password, address }) => {
-  const res = await fetch(`${API_BASE}/auth/register`, {
+// 1. Customer Signup (Mobile + Password)
+export const registerCustomer = async ({ name, mobile, password, address }) => {
+  const res = await fetch(`${API_BASE}/customer/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, emailOrMobile, password, address })
+    body: JSON.stringify({ name, mobile, password, address })
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.message || 'Registration failed');
+  if (!res.ok) throw new Error(data.message || 'Customer registration failed');
   return data;
 };
 
-// 2. Customer Login
-export const loginCustomer = async ({ emailOrMobile, password }) => {
-  const res = await fetch(`${API_BASE}/auth/login`, {
+// 2. Customer Login (Mobile + Password)
+export const loginCustomer = async ({ mobile, password }) => {
+  const res = await fetch(`${API_BASE}/customer/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ emailOrMobile, password, role: 'customer' })
+    body: JSON.stringify({ mobile, password })
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || 'Customer login failed');
   return data;
 };
 
-// 3. Admin Login
-export const loginAdmin = async ({ emailOrMobile, password }) => {
-  const res = await fetch(`${API_BASE}/auth/login`, {
+// 3. Admin Login (Mobile + Password)
+export const loginAdmin = async ({ mobile, password }) => {
+  const res = await fetch(`${API_BASE}/admin/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ emailOrMobile, password, role: 'admin' })
+    body: JSON.stringify({ mobile, password })
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || 'Admin login failed');
   return data;
 };
 
-// 4. Fetch Logged-in Customer Orders
-export const fetchCustomerOrders = async ({ phone, email, userId }) => {
+// 4. Change Admin Password
+export const changeAdminPassword = async ({ currentPassword, newPassword }) => {
+  const res = await fetch(`${API_BASE}/admin/change-password`, {
+    method: 'PUT',
+    headers: getAdminAuthHeader(),
+    body: JSON.stringify({ currentPassword, newPassword })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Failed to change admin password');
+  return data;
+};
+
+// 5. Update Customer Profile
+export const updateCustomerProfile = async ({ name, address }) => {
+  const res = await fetch(`${API_BASE}/customer/profile`, {
+    method: 'PUT',
+    headers: getCustomerAuthHeader(),
+    body: JSON.stringify({ name, address })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Failed to update profile');
+  return data;
+};
+
+// 6. Fetch Customer Orders
+export const fetchCustomerOrders = async ({ phone, userId }) => {
   const query = new URLSearchParams();
-  if (phone) query.append('phone', phone);
-  if (email) query.append('email', email);
+  if (phone) query.append('mobile', phone);
   if (userId) query.append('userId', userId);
 
   const res = await fetch(`${API_BASE}/customer/orders?${query.toString()}`);
@@ -232,10 +268,10 @@ export const fetchProducts = async () => {
   }
 };
 
-export const createProduct = async (productData, adminPassword) => {
+export const createProduct = async (productData) => {
   const res = await fetch(`${API_BASE}/admin/products`, {
     method: 'POST',
-    headers: getAdminAuthHeader(adminPassword),
+    headers: getAdminAuthHeader(),
     body: JSON.stringify(productData)
   });
   const data = await res.json();
@@ -243,10 +279,10 @@ export const createProduct = async (productData, adminPassword) => {
   return data;
 };
 
-export const updateProduct = async (id, productData, adminPassword) => {
+export const updateProduct = async (id, productData) => {
   const res = await fetch(`${API_BASE}/admin/products/${id}`, {
     method: 'PUT',
-    headers: getAdminAuthHeader(adminPassword),
+    headers: getAdminAuthHeader(),
     body: JSON.stringify(productData)
   });
   const data = await res.json();
@@ -254,21 +290,23 @@ export const updateProduct = async (id, productData, adminPassword) => {
   return data;
 };
 
-export const deleteProduct = async (id, adminPassword) => {
+export const deleteProduct = async (id) => {
   const res = await fetch(`${API_BASE}/admin/products/${id}`, {
     method: 'DELETE',
-    headers: getAdminAuthHeader(adminPassword)
+    headers: getAdminAuthHeader()
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || 'Failed to delete product');
   return data;
 };
 
-export const uploadProductImage = async (formData, adminPassword) => {
+export const uploadProductImage = async (formData) => {
+  const token = localStorage.getItem('admin_token') || 'admin123';
   const res = await fetch(`${API_BASE}/admin/upload`, {
     method: 'POST',
     headers: {
-      'x-admin-password': adminPassword || localStorage.getItem('sdkas_admin_pass') || ''
+      'Authorization': `Bearer ${token}`,
+      'x-admin-token': token
     },
     body: formData
   });
@@ -301,19 +339,19 @@ export const placeOrder = async (orderData) => {
   }
 };
 
-export const fetchOrders = async (adminPassword) => {
+export const fetchOrders = async () => {
   const res = await fetch(`${API_BASE}/admin/orders`, {
-    headers: getAdminAuthHeader(adminPassword)
+    headers: getAdminAuthHeader()
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || 'Failed to fetch orders');
   return data;
 };
 
-export const updateOrderStatus = async (id, status, adminPassword) => {
+export const updateOrderStatus = async (id, status) => {
   const res = await fetch(`${API_BASE}/admin/orders/${id}`, {
     method: 'PUT',
-    headers: getAdminAuthHeader(adminPassword),
+    headers: getAdminAuthHeader(),
     body: JSON.stringify({ status })
   });
   const data = await res.json();
@@ -338,30 +376,11 @@ export const sendContactMessage = async (contactData) => {
   }
 };
 
-export const fetchContactMessages = async (adminPassword) => {
+export const fetchContactMessages = async () => {
   const res = await fetch(`${API_BASE}/admin/contacts`, {
-    headers: getAdminAuthHeader(adminPassword)
+    headers: getAdminAuthHeader()
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || 'Failed to fetch contact messages');
   return data;
-};
-
-// Legacy Admin Login
-export const adminLogin = async (password) => {
-  try {
-    const res = await fetch(`${API_BASE}/admin/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password })
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || 'Invalid admin password');
-    return data;
-  } catch (err) {
-    if (password === 'admin123') {
-      return { success: true, message: 'Authenticated successfully' };
-    }
-    throw err;
-  }
 };

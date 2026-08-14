@@ -1,0 +1,23 @@
+[
+  {
+    "id": "usr-admin-1",
+    "name": "Shri Datta Dairy Admin",
+    "emailOrMobile": "7795687471",
+    "email": "pawarganesh5070@gmail.com",
+    "phone": "7795687471",
+    "password": "admin123",
+    "role": "admin",
+    "createdAt": "2026-08-14T22:00:00.000Z"
+  },
+  {
+    "id": "usr-cust-1",
+    "name": "Ramesh Pawar",
+    "emailOrMobile": "9481327296",
+    "email": "ramesh@gmail.com",
+    "phone": "9481327296",
+    "password": "user123",
+    "role": "customer",
+    "address": "Ingali Village, Near Bus Stand, Chikkodi, Belagavi",
+    "createdAt": "2026-08-14T22:00:00.000Z"
+  }
+]

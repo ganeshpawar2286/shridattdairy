@@ -1,24 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import {
   Lock, KeyRound, Plus, Edit, Trash2, CheckCircle, AlertCircle,
-  Upload, Tag, ShoppingBag, MessageSquare, RefreshCw, X, ShieldAlert, Mail
+  Upload, Tag, ShoppingBag, MessageSquare, RefreshCw, X, ShieldAlert, Phone, Settings, Save
 } from 'lucide-react';
 import {
-  adminLogin, fetchProducts, createProduct, updateProduct, deleteProduct,
+  fetchProducts, createProduct, updateProduct, deleteProduct,
   fetchOrders, updateOrderStatus, fetchContactMessages, uploadProductImage
 } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
 export const Admin = () => {
-  const { adminLogin: authAdminLogin, logout, user, isAdmin } = useAuth();
+  const { adminUser, isAdminLoggedIn, adminLogin, logoutAdmin, changePassword } = useAuth();
 
-  const [emailOrMobile, setEmailOrMobile] = useState('7795687471');
+  const [mobile, setMobile] = useState('9999999999');
   const [password, setPassword] = useState('');
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    return Boolean(localStorage.getItem('sdkas_admin_pass'));
-  });
   const [loginError, setLoginError] = useState('');
-  const [activeTab, setActiveTab] = useState('products'); // 'products', 'orders', 'messages'
+  const [activeTab, setActiveTab] = useState('products'); // 'products', 'orders', 'messages', 'settings'
+
+  // Admin Change Password State
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordMsg, setPasswordMsg] = useState({ text: '', type: '' });
 
   // Data states
   const [products, setProducts] = useState([]);
@@ -43,35 +46,27 @@ export const Admin = () => {
   });
   const [uploadingImage, setUploadingImage] = useState(false);
 
-  const getAdminPass = () => localStorage.getItem('sdkas_admin_pass') || password || 'admin123';
-
-  const handleLogin = async (e) => {
+  const handleLoginSubmit = async (e) => {
     e.preventDefault();
     setLoginError('');
+    setLoading(true);
     try {
-      await authAdminLogin({ emailOrMobile, password });
-      localStorage.setItem('sdkas_admin_pass', password);
-      setIsAuthenticated(true);
-      loadAdminData(password);
+      await adminLogin({ mobile, password });
     } catch (err) {
-      setLoginError(err.message || 'Incorrect admin password or credentials');
+      setLoginError(err.message || 'Incorrect admin mobile number or password.');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleLogout = () => {
-    logout();
-    setIsAuthenticated(false);
-    setPassword('');
-  };
-
-  const loadAdminData = (pass = getAdminPass()) => {
+  const loadAdminData = () => {
     setLoading(true);
     setStatusMsg('');
 
     Promise.all([
       fetchProducts(),
-      fetchOrders(pass).catch(() => []),
-      fetchContactMessages(pass).catch(() => [])
+      fetchOrders().catch(() => []),
+      fetchContactMessages().catch(() => [])
     ]).then(([prods, ords, msgs]) => {
       setProducts(prods);
       setOrders(ords);
@@ -84,33 +79,10 @@ export const Admin = () => {
   };
 
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAdminLoggedIn) {
       loadAdminData();
     }
-  }, [isAuthenticated]);
-
-  useEffect(() => {
-    if (!isAuthenticated) return;
-
-    const refreshOnVisibility = () => {
-      if (document.visibilityState === 'visible') {
-        loadAdminData();
-      }
-    };
-
-    const refreshTimer = window.setInterval(() => {
-      loadAdminData();
-    }, 15000);
-
-    window.addEventListener('focus', refreshOnVisibility);
-    document.addEventListener('visibilitychange', refreshOnVisibility);
-
-    return () => {
-      window.clearInterval(refreshTimer);
-      window.removeEventListener('focus', refreshOnVisibility);
-      document.removeEventListener('visibilitychange', refreshOnVisibility);
-    };
-  }, [isAuthenticated]);
+  }, [isAdminLoggedIn]);
 
   // Open Modal for Create or Edit
   const openAddModal = () => {
@@ -155,7 +127,7 @@ export const Admin = () => {
     data.append('image', file);
 
     try {
-      const res = await uploadProductImage(data, getAdminPass());
+      const res = await uploadProductImage(data);
       if (res.success) {
         setFormData(prev => ({ ...prev, image: res.imagePath }));
         setStatusMsg('Image uploaded successfully!');
@@ -172,10 +144,10 @@ export const Admin = () => {
     e.preventDefault();
     try {
       if (editingProduct) {
-        await updateProduct(editingProduct.id, formData, getAdminPass());
+        await updateProduct(editingProduct.id, formData);
         setStatusMsg(`Updated "${formData.name}" successfully!`);
       } else {
-        await createProduct(formData, getAdminPass());
+        await createProduct(formData);
         setStatusMsg(`Created new product "${formData.name}"!`);
       }
       setProductModalOpen(false);
@@ -189,7 +161,7 @@ export const Admin = () => {
   const handleDeleteProduct = async (id, name) => {
     if (!window.confirm(`Are you sure you want to delete "${name}"?`)) return;
     try {
-      await deleteProduct(id, getAdminPass());
+      await deleteProduct(id);
       setStatusMsg(`Deleted product "${name}"`);
       loadAdminData();
     } catch (err) {
@@ -213,20 +185,38 @@ export const Admin = () => {
   // Update Order Status
   const handleOrderStatusChange = async (orderId, newStatus) => {
     try {
-      await updateOrderStatus(orderId, newStatus, getAdminPass());
+      await updateOrderStatus(orderId, newStatus);
       const updatedOrder = orders.find(order => order.id === orderId);
       if (updatedOrder) {
         openOrderWhatsAppMessage(updatedOrder, newStatus);
       }
-      setStatusMsg(`Order ${orderId} updated to ${newStatus}. WhatsApp chat opened for manual message sending.`);
+      setStatusMsg(`Order ${orderId} updated to ${newStatus}. WhatsApp chat opened for customer communication.`);
       loadAdminData();
     } catch (err) {
       alert(err.message || 'Failed to update order status');
     }
   };
 
-  // 1. Password Login View
-  if (!isAuthenticated) {
+  // Change Admin Password Submit
+  const handleChangePasswordSubmit = async (e) => {
+    e.preventDefault();
+    if (newPassword !== confirmPassword) {
+      setPasswordMsg({ text: 'New passwords do not match.', type: 'error' });
+      return;
+    }
+    try {
+      await changePassword({ currentPassword, newPassword });
+      setPasswordMsg({ text: 'Admin password updated successfully!', type: 'success' });
+      setNewPassword('');
+      setConfirmPassword('');
+      setCurrentPassword('');
+    } catch (err) {
+      setPasswordMsg({ text: err.message || 'Failed to change password.', type: 'error' });
+    }
+  };
+
+  // 1. Admin Login Form View (Hidden Route `/admin`)
+  if (!isAdminLoggedIn) {
     return (
       <div className="container animate-fade-in" style={{ padding: '5rem 1.5rem', maxWidth: '440px' }}>
         <div style={{
@@ -237,32 +227,32 @@ export const Admin = () => {
           boxShadow: '0 10px 30px rgba(0,0,0,0.05)',
           textAlign: 'center'
         }}>
-          <div style={{ background: '#e8f5e9', color: '#1b5e20', width: '64px', height: '64px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.2rem auto' }}>
-            <Lock size={32} />
+          <div style={{ background: '#fff3e0', color: '#e65100', width: '64px', height: '64px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.2rem auto' }}>
+            <ShieldAlert size={32} />
           </div>
 
           <h1 style={{ fontSize: '1.8rem', fontWeight: 800, color: '#1b5e20', marginBottom: '0.4rem' }}>
-            Owner / Admin Portal
+            Store Owner Admin Portal
           </h1>
           <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '1.8rem' }}>
-            Enter admin password to manage products, orders, and messages for Shri Datta Dairy.
+            Enter your mobile number and password to manage Shri Datta Dairy products and orders.
           </p>
 
           {loginError && (
-            <div style={{ background: '#ffebee', color: '#c62828', padding: '10px 14px', borderRadius: '10px', fontSize: '0.85rem', marginBottom: '1rem' }}>
+            <div style={{ background: '#ffebee', color: '#c62828', padding: '10px 14px', borderRadius: '10px', fontSize: '0.85rem', marginBottom: '1rem', border: '1px solid #ffcdd2' }}>
               {loginError}
             </div>
           )}
 
-          <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <form onSubmit={handleLoginSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div style={{ position: 'relative' }}>
-              <Mail size={18} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+              <Phone size={18} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
               <input
-                type="text"
+                type="tel"
                 required
-                placeholder="Admin Mobile or Email (e.g. 7795687471)"
-                value={emailOrMobile}
-                onChange={(e) => setEmailOrMobile(e.target.value)}
+                placeholder="Admin Mobile Number (e.g. 9999999999)"
+                value={mobile}
+                onChange={(e) => setMobile(e.target.value)}
                 style={{
                   width: '100%',
                   padding: '12px 14px 12px 42px',
@@ -293,20 +283,20 @@ export const Admin = () => {
               />
             </div>
 
-            <button type="submit" className="btn btn-primary" style={{ padding: '12px', fontSize: '1rem', width: '100%', justifyContent: 'center' }}>
-              Login to Admin Portal
+            <button type="submit" disabled={loading} className="btn btn-accent" style={{ padding: '12px', fontSize: '1rem', width: '100%', justifyContent: 'center' }}>
+              {loading ? 'Authenticating...' : 'Login to Admin Panel'}
             </button>
           </form>
 
           <div style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: '1.5rem' }}>
-            Default Admin credentials: <strong>7795687471</strong> / <strong>admin123</strong>
+            Pre-created Admin Mobile: <strong>9999999999</strong> or <strong>7795687471</strong> | Password: <strong>admin123</strong>
           </div>
         </div>
       </div>
     );
   }
 
-  // 2. Authenticated Admin Dashboard
+  // 2. Authenticated Admin Dashboard (`/admin`)
   return (
     <div className="animate-fade-in" style={{ padding: '2.5rem 0 5rem 0' }}>
       <div className="container">
@@ -329,7 +319,7 @@ export const Admin = () => {
               Shri Datta Krushi Abhivrudhi Sangh, Ingali
             </span>
             <h1 style={{ fontSize: '1.8rem', fontWeight: 800, color: '#1e293b' }}>
-              Owner Control Dashboard
+              Owner Admin Control Dashboard
             </h1>
           </div>
 
@@ -337,8 +327,8 @@ export const Admin = () => {
             <button onClick={() => loadAdminData()} className="btn btn-secondary" style={{ padding: '8px 14px', fontSize: '0.88rem' }}>
               <RefreshCw size={16} /> Refresh
             </button>
-            <button onClick={handleLogout} className="btn" style={{ background: '#ffebee', color: '#c62828', padding: '8px 14px', fontSize: '0.88rem' }}>
-              Logout
+            <button onClick={logoutAdmin} className="btn" style={{ background: '#ffebee', color: '#c62828', padding: '8px 14px', fontSize: '0.88rem' }}>
+              Logout Admin
             </button>
           </div>
         </div>
@@ -410,6 +400,26 @@ export const Admin = () => {
             }}
           >
             <MessageSquare size={18} /> Contact Inquiries ({messages.length})
+          </button>
+
+          <button
+            onClick={() => setActiveTab('settings')}
+            style={{
+              padding: '12px 20px',
+              borderRadius: '14px',
+              border: 'none',
+              fontWeight: 700,
+              fontSize: '0.95rem',
+              background: activeTab === 'settings' ? '#1b5e20' : '#ffffff',
+              color: activeTab === 'settings' ? '#ffffff' : '#475569',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+              cursor: 'pointer'
+            }}
+          >
+            <Settings size={18} /> Admin Settings
           </button>
         </div>
 
@@ -620,6 +630,67 @@ export const Admin = () => {
                 </div>
               ))
             )}
+          </div>
+        )}
+
+        {/* TAB 4: ADMIN SETTINGS (Change Password) */}
+        {activeTab === 'settings' && (
+          <div style={{ maxWidth: '500px' }}>
+            <div style={{ background: '#ffffff', borderRadius: '20px', border: '1px solid #e2e8f0', padding: '2rem', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
+              <h3 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#1b5e20', marginBottom: '1.2rem', borderBottom: '1px solid #f1f5f9', paddingBottom: '0.8rem' }}>
+                ⚙️ Admin Account Settings
+              </h3>
+
+              {passwordMsg.text && (
+                <div style={{
+                  background: passwordMsg.type === 'success' ? '#e8f5e9' : '#ffebee',
+                  color: passwordMsg.type === 'success' ? '#1b5e20' : '#c62828',
+                  padding: '10px 14px',
+                  borderRadius: '10px',
+                  fontSize: '0.88rem',
+                  marginBottom: '1.2rem',
+                  border: passwordMsg.type === 'success' ? '1px solid #c8e6c9' : '1px solid #ffcdd2'
+                }}>
+                  {passwordMsg.text}
+                </div>
+              )}
+
+              <form onSubmit={handleChangePasswordSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.88rem', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+                    New Password *
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    minLength="4"
+                    placeholder="Enter new admin password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    style={{ width: '100%', padding: '12px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '0.95rem', outline: 'none' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.88rem', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+                    Confirm New Password *
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    minLength="4"
+                    placeholder="Re-enter new password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    style={{ width: '100%', padding: '12px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '0.95rem', outline: 'none' }}
+                  />
+                </div>
+
+                <button type="submit" className="btn btn-primary" style={{ padding: '12px', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                  <Save size={18} /> Save New Admin Password
+                </button>
+              </form>
+            </div>
           </div>
         )}
       </div>

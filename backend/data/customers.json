@@ -1,0 +1,19 @@
+[
+  {
+    "id": "cust-1",
+    "name": "Ramesh Pawar",
+    "mobile": "9481327296",
+    "password": "$2b$10$Wey6UTZlv87YDcOXsEtReuqbzJ/5rxab7Cs23eYlWB4G1NDgyJMEW",
+    "role": "customer",
+    "address": "Ingali Village, Near Bus Stand, Chikkodi, Belagavi",
+    "createdAt": "2026-08-14T17:19:05.855Z"
+  },
+  {
+    "id": "cust-1786730254537",
+    "name": "darshan pawar",
+    "mobile": "7760657471",
+    "password": "$2b$10$WNEnvP8fqGn/d0zBv9IcS.9cgX4Z9m4qH2x2Xdm5wUu7bsoT.rDSe",
+    "address": "ingali",
+    "role": "customer"
+  }
+]

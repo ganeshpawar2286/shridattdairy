@@ -1,0 +1,18 @@
+[
+  {
+    "id": "admin-1",
+    "name": "Ganesh Pawar (Owner)",
+    "mobile": "7795687471",
+    "password": "$2a$10$7rBGlf.5e.RkXgM6eO08nO4Yc80e/e.j8GZ0u.qN6YlG5e95sJg.6",
+    "role": "admin",
+    "createdAt": "2026-08-14T17:00:00.000Z"
+  },
+  {
+    "id": "admin-2",
+    "name": "Shri Datta Admin",
+    "mobile": "9999999999",
+    "password": "$2a$10$7rBGlf.5e.RkXgM6eO08nO4Yc80e/e.j8GZ0u.qN6YlG5e95sJg.6",
+    "role": "admin",
+    "createdAt": "2026-08-14T17:00:00.000Z"
+  }
+]

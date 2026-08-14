@@ -24,6 +24,7 @@ const DATA_DIR = path.join(__dirname, 'data');
 const PRODUCTS_FILE = path.join(DATA_DIR, 'products.json');
 const ORDERS_FILE = path.join(DATA_DIR, 'orders.json');
 const CONTACTS_FILE = path.join(DATA_DIR, 'contacts.json');
+const USERS_FILE = path.join(DATA_DIR, 'users.json');
 const PUBLIC_IMAGES_DIR = path.join(__dirname, '..', 'public', 'images');
 
 // Ensure directories exist
@@ -164,7 +165,126 @@ const checkAuth = (req, res, next) => {
 
 // --- ROUTES ---
 
-// 1. Admin Login
+// 1. User Authentication (Separate Customer & Admin Login)
+
+// A. Register Customer
+app.post('/api/auth/register', (req, res) => {
+  const users = readJSON(USERS_FILE);
+  const { name, emailOrMobile, password, address } = req.body;
+
+  if (!name || !emailOrMobile || !password) {
+    return res.status(400).json({ success: false, message: 'Name, Email/Mobile number, and Password are required.' });
+  }
+
+  const normalizedInput = emailOrMobile.trim().toLowerCase();
+
+  const existingUser = users.find(u =>
+    u.emailOrMobile?.toLowerCase() === normalizedInput ||
+    u.email?.toLowerCase() === normalizedInput ||
+    u.phone === normalizedInput
+  );
+
+  if (existingUser) {
+    return res.status(400).json({ success: false, message: 'An account with this Email or Mobile Number already exists.' });
+  }
+
+  const isEmail = normalizedInput.includes('@');
+
+  const newUser = {
+    id: `usr-${Date.now()}`,
+    name,
+    emailOrMobile: normalizedInput,
+    email: isEmail ? normalizedInput : '',
+    phone: isEmail ? '' : normalizedInput,
+    password,
+    role: 'customer',
+    address: address || '',
+    createdAt: new Date().toISOString()
+  };
+
+  users.push(newUser);
+  writeJSON(USERS_FILE, users);
+
+  // Return user without sending password back
+  const { password: _, ...userSafe } = newUser;
+  res.status(201).json({ success: true, message: 'Customer registration successful!', user: userSafe });
+});
+
+// B. Login (Customer & Admin)
+app.post('/api/auth/login', (req, res) => {
+  const users = readJSON(USERS_FILE);
+  const { emailOrMobile, password, role } = req.body; // role: 'customer' or 'admin'
+
+  if (!emailOrMobile || !password) {
+    return res.status(400).json({ success: false, message: 'Email/Mobile number and Password are required.' });
+  }
+
+  const normalizedInput = emailOrMobile.trim().toLowerCase();
+  const targetRole = role || 'customer';
+
+  // Handle Admin Login Check
+  if (targetRole === 'admin') {
+    if (password === ADMIN_PASSWORD) {
+      const adminUser = users.find(u => u.role === 'admin') || {
+        id: 'usr-admin-default',
+        name: 'Shri Datta Dairy Admin',
+        emailOrMobile: normalizedInput,
+        role: 'admin'
+      };
+      const { password: _, ...adminSafe } = adminUser;
+      return res.json({ success: true, message: 'Admin login successful', user: { ...adminSafe, role: 'admin' } });
+    } else {
+      return res.status(401).json({ success: false, message: 'Incorrect admin password.' });
+    }
+  }
+
+  // Handle Customer Login Check
+  const user = users.find(u =>
+    (u.emailOrMobile?.toLowerCase() === normalizedInput ||
+     u.email?.toLowerCase() === normalizedInput ||
+     u.phone === normalizedInput) &&
+    u.role === 'customer'
+  );
+
+  if (!user) {
+    return res.status(404).json({ success: false, message: 'Customer account not found. Please register first.' });
+  }
+
+  if (user.password !== password) {
+    return res.status(401).json({ success: false, message: 'Incorrect password.' });
+  }
+
+  const { password: _, ...userSafe } = user;
+  res.json({ success: true, message: 'Customer login successful', user: userSafe });
+});
+
+// C. Get Customer's Placed Orders
+app.get('/api/customer/orders', (req, res) => {
+  const orders = readJSON(ORDERS_FILE);
+  const { phone, email, userId } = req.query;
+
+  if (!phone && !email && !userId) {
+    return res.status(400).json({ success: false, message: 'Phone or Email parameter required.' });
+  }
+
+  const filtered = orders.filter(o => {
+    if (phone && o.phone && o.phone.includes(phone)) return true;
+    if (email && o.customerEmail && o.customerEmail.toLowerCase() === email.toLowerCase()) return true;
+    if (userId && o.customerId === userId) return true;
+    return false;
+  });
+
+  res.json(filtered);
+});
+
+// D. Get Registered Customer Users List (Admin)
+app.get('/api/admin/users', checkAuth, (req, res) => {
+  const users = readJSON(USERS_FILE);
+  const safeUsers = users.map(({ password, ...u }) => u);
+  res.json(safeUsers);
+});
+
+// 2. Legacy Admin Login Endpoint (Supported)
 app.post('/api/admin/login', (req, res) => {
   const { password } = req.body;
   if (password === ADMIN_PASSWORD) {
@@ -173,13 +293,13 @@ app.post('/api/admin/login', (req, res) => {
   return res.status(401).json({ success: false, message: 'Incorrect password' });
 });
 
-// 2. Get All Products
+// 3. Get All Products
 app.get('/api/products', (req, res) => {
   const products = readJSON(PRODUCTS_FILE);
   res.json(products);
 });
 
-// 3. Add Product (Admin)
+// 4. Add Product (Admin)
 app.post('/api/admin/products', checkAuth, (req, res) => {
   const products = readJSON(PRODUCTS_FILE);
   const { name, category, retailPrice, wholesalePrice, unit, image, description, inStock, isPlaceholderPrice } = req.body;
@@ -206,7 +326,7 @@ app.post('/api/admin/products', checkAuth, (req, res) => {
   res.status(201).json({ success: true, product: newProduct });
 });
 
-// 4. Edit Product (Admin)
+// 5. Edit Product (Admin)
 app.put('/api/admin/products/:id', checkAuth, (req, res) => {
   const products = readJSON(PRODUCTS_FILE);
   const index = products.findIndex(p => p.id === req.params.id);
@@ -230,7 +350,7 @@ app.put('/api/admin/products/:id', checkAuth, (req, res) => {
   res.json({ success: true, product: updated });
 });
 
-// 5. Delete Product (Admin)
+// 6. Delete Product (Admin)
 app.delete('/api/admin/products/:id', checkAuth, (req, res) => {
   let products = readJSON(PRODUCTS_FILE);
   const initialLength = products.length;
@@ -244,7 +364,7 @@ app.delete('/api/admin/products/:id', checkAuth, (req, res) => {
   res.json({ success: true, message: 'Product deleted successfully' });
 });
 
-// 6. Upload Image (Admin)
+// 7. Upload Image (Admin)
 app.post('/api/admin/upload', checkAuth, upload.single('image'), (req, res) => {
   if (!req.file) {
     return res.status(400).json({ success: false, message: 'No image file provided' });
@@ -253,10 +373,10 @@ app.post('/api/admin/upload', checkAuth, upload.single('image'), (req, res) => {
   res.json({ success: true, imagePath });
 });
 
-// 7. Place New Order (Public)
+// 8. Place New Order (Public / Customer)
 app.post('/api/orders', (req, res) => {
   const orders = readJSON(ORDERS_FILE);
-  const { customerName, phone, address, orderType, items, subtotal, grandTotal, paymentMethod } = req.body;
+  const { customerId, customerEmail, customerName, phone, address, orderType, items, subtotal, grandTotal, paymentMethod } = req.body;
 
   if (!customerName || !phone || !address || !items || !items.length) {
     return res.status(400).json({ success: false, message: 'Missing required order details' });
@@ -266,6 +386,8 @@ app.post('/api/orders', (req, res) => {
   const newOrder = {
     id: orderId,
     createdAt: new Date().toISOString(),
+    customerId: customerId || '',
+    customerEmail: customerEmail || '',
     customerName,
     phone,
     address,
@@ -282,13 +404,13 @@ app.post('/api/orders', (req, res) => {
   res.status(201).json({ success: true, orderId, order: newOrder });
 });
 
-// 8. Get Orders (Admin)
+// 9. Get Orders (Admin)
 app.get('/api/admin/orders', checkAuth, (req, res) => {
   const orders = readJSON(ORDERS_FILE);
   res.json(orders);
 });
 
-// 9. Update Order Status (Admin)
+// 10. Update Order Status (Admin)
 app.put('/api/admin/orders/:id', checkAuth, (req, res) => {
   const orders = readJSON(ORDERS_FILE);
   const index = orders.findIndex(o => o.id === req.params.id);
@@ -312,7 +434,7 @@ app.put('/api/admin/orders/:id', checkAuth, (req, res) => {
     });
 });
 
-// 10. Submit Contact Form (Public)
+// 11. Submit Contact Form (Public)
 app.post('/api/contact', (req, res) => {
   const contacts = readJSON(CONTACTS_FILE);
   const { name, phone, message } = req.body;
@@ -349,7 +471,7 @@ app.post('/api/contact', (req, res) => {
     });
 });
 
-// 11. Get Contact Messages (Admin)
+// 12. Get Contact Messages (Admin)
 app.get('/api/admin/contacts', checkAuth, (req, res) => {
   const contacts = readJSON(CONTACTS_FILE);
   res.json(contacts);

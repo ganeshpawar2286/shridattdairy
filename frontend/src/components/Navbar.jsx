@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { ShoppingBag, Milk, Menu, X, PhoneCall, ShieldCheck, Tag, User, LogOut, Package, ShieldAlert } from 'lucide-react';
+import { ShoppingBag, Milk, Menu, X, PhoneCall, ShieldCheck, Tag, User, LogOut } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 
 export const Navbar = () => {
   const { cartCount, pricingMode, setPricingMode } = useCart();
-  const { user, isCustomer, isAdmin, logout } = useAuth();
+  const { customerUser, isCustomerLoggedIn, logoutCustomer } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -23,7 +23,7 @@ export const Navbar = () => {
       borderBottom: '1px solid #e2e8f0',
       boxShadow: '0 2px 10px rgba(0, 0, 0, 0.04)'
     }}>
-      {/* Top Banner with Contact & FSSAI & Admin Link */}
+      {/* Top Banner with Contact & FSSAI */}
       <div style={{
         background: '#1b5e20',
         color: '#ffffff',
@@ -54,9 +54,7 @@ export const Navbar = () => {
               <ShieldCheck size={12} /> FSSAI APPROVED DAIRY
             </span>
             <span style={{ opacity: 0.8 }}>|</span>
-            <Link to="/admin" style={{ color: '#fff9c4', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <ShieldAlert size={12} /> Owner Admin Portal
-            </Link>
+            <span style={{ color: '#fff9c4', fontWeight: 600 }}>Wholesale & Retail Dairy</span>
           </div>
         </div>
       </div>
@@ -126,8 +124,8 @@ export const Navbar = () => {
             Contact
           </Link>
 
-          {/* Separate Customer Authentication Badge */}
-          {user && isCustomer ? (
+          {/* Logged in Customer Avatar Dropdown */}
+          {isCustomerLoggedIn && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Link to="/my-orders" style={{
                 background: '#e8f5e9',
@@ -141,10 +139,10 @@ export const Navbar = () => {
                 gap: '6px',
                 border: '1px solid #c8e6c9'
               }}>
-                <User size={15} /> Hi, {user.name.split(' ')[0]}
+                <User size={15} /> Hi, {customerUser.name?.split(' ')[0] || 'Customer'}
               </Link>
               <button
-                onClick={logout}
+                onClick={logoutCustomer}
                 style={{
                   background: '#f1f5f9',
                   color: '#64748b',
@@ -159,20 +157,6 @@ export const Navbar = () => {
                 <LogOut size={14} />
               </button>
             </div>
-          ) : (
-            <Link to="/login" style={{
-              background: '#1b5e20',
-              color: '#ffffff',
-              fontWeight: 700,
-              fontSize: '0.88rem',
-              padding: '6px 14px',
-              borderRadius: '10px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}>
-              <User size={15} /> Customer Login
-            </Link>
           )}
         </nav>
 
@@ -300,24 +284,16 @@ export const Navbar = () => {
             Contact
           </Link>
 
-          {user && isCustomer ? (
+          {isCustomerLoggedIn && (
             <>
               <Link to="/my-orders" onClick={() => setMobileMenuOpen(false)} style={{ padding: '8px 0', fontWeight: 700, color: '#1b5e20' }}>
-                📦 My Orders ({user.name})
+                📦 My Orders ({customerUser.name})
               </Link>
-              <button onClick={() => { logout(); setMobileMenuOpen(false); }} style={{ textAlign: 'left', padding: '8px 0', fontWeight: 600, color: '#c62828', background: 'none', border: 'none' }}>
+              <button onClick={() => { logoutCustomer(); setMobileMenuOpen(false); }} style={{ textAlign: 'left', padding: '8px 0', fontWeight: 600, color: '#c62828', background: 'none', border: 'none' }}>
                 Logout Account
               </button>
             </>
-          ) : (
-            <Link to="/login" onClick={() => setMobileMenuOpen(false)} style={{ padding: '8px 0', fontWeight: 700, color: '#1b5e20' }}>
-              👤 Customer Login / Register
-            </Link>
           )}
-
-          <Link to="/admin" onClick={() => setMobileMenuOpen(false)} style={{ padding: '8px 0', fontWeight: 600, color: '#64748b' }}>
-            🛡️ Owner / Admin Portal
-          </Link>
         </div>
       )}
 
