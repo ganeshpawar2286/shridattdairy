@@ -602,9 +602,10 @@ app.get('/api/admin/contacts', checkAdminAuth, async (req, res) => {
   }
 });
 
+if (!process.env.VERCEL) {
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 Dairy E-commerce API Server running on port ${PORT}`);
+  });
+}
 
-
-// Start server
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Dairy E-commerce API Server running on port ${PORT}`);
-});
+export default app;
