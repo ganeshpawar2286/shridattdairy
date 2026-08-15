@@ -602,8 +602,5 @@ app.get('/api/admin/contacts', checkAdminAuth, async (req, res) => {
   }
 });
 
-// Start Express Server
-// Start Express Server
-app.listen(PORT, () => {
-  console.log(`🚀 Dairy E-commerce API Server running on port ${PORT}`);
-});
+// Export Express app for Vercel
+export default app;
