@@ -603,12 +603,7 @@ app.get('/api/admin/contacts', checkAdminAuth, async (req, res) => {
 });
 
 // Start Express Server
-// Start Express Server locally
-if (process.env.NODE_ENV !== 'production') {
-  app.listen(PORT, () => {
-    console.log(`🚀 Dairy E-commerce API Server running on port ${PORT}`);
-  });
-}
-
-// Export app for Vercel
-export default app;
+// Start Express Server
+app.listen(PORT, () => {
+  console.log(`🚀 Dairy E-commerce API Server running on port ${PORT}`);
+});
