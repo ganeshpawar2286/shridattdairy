@@ -244,7 +244,7 @@ export const AuthGate = () => {
                     <input
                       type="text"
                       required
-                      placeholder="e.g. Ramesh Pawar"
+                      placeholder="Enter your name"
                       value={custName}
                       onChange={(e) => setCustName(e.target.value)}
                       style={{ width: '100%', padding: '12px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '0.95rem', outline: 'none' }}
@@ -259,7 +259,6 @@ export const AuthGate = () => {
                   <input
                     type="text"
                     required
-                    placeholder="e.g. 9876543210 or ramesh@gmail.com"
                     value={custIdentifier}
                     onChange={(e) => setCustIdentifier(e.target.value)}
                     style={{ width: '100%', padding: '12px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '0.95rem', outline: 'none' }}
@@ -287,7 +286,6 @@ export const AuthGate = () => {
                     </label>
                     <textarea
                       rows="2"
-                      placeholder="Enter village/city landmark (e.g. Near Bus Stand, Ingali)"
                       value={custAddress}
                       onChange={(e) => setCustAddress(e.target.value)}
                       style={{ width: '100%', padding: '12px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '0.95rem', outline: 'none', fontFamily: 'inherit' }}
