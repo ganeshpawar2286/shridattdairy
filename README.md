@@ -17,8 +17,10 @@ A modern, responsive, full-stack e-commerce web application with **MongoDB Atlas
 
 ```
 ecommerce/
-├── package.json               # Root launcher (runs frontend & backend together)
+├── package.json               # Root launcher (runs frontend & API together)
 ├── README.md
+├── api/                       # Entry point for the old-style backend folder layout
+│   └── index.js               # Boots the Express API from backend/
 ├── backend/                   # Node.js + Express Backend REST API
 │   ├── .env.example           # Environment variables template
 │   ├── index.js               # API Server routes & cloud database connections
