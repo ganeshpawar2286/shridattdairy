@@ -239,7 +239,7 @@ export const UnifiedLoginGate = () => {
                   <input
                     type="text"
                     required
-                    placeholder="e.g. Ramesh Pawar"
+                    placeholder=""
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     style={{ width: '100%', padding: '12px 14px 12px 42px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '0.95rem', outline: 'none' }}
@@ -256,7 +256,7 @@ export const UnifiedLoginGate = () => {
                   <input
                     type="tel"
                     required
-                    placeholder="e.g. 9876543210"
+                    placeholder=""
                     value={mobile}
                     onChange={(e) => setMobile(e.target.value)}
                     style={{ width: '100%', padding: '12px 14px 12px 42px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '0.95rem', outline: 'none' }}
@@ -287,7 +287,7 @@ export const UnifiedLoginGate = () => {
                 </label>
                 <textarea
                   rows="2"
-                  placeholder="Enter village/city landmark (e.g. Near Bus Stand, Ingali)"
+                  placeholder="Enter village/city/landmark"
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
                   style={{ width: '100%', padding: '12px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '0.92rem', outline: 'none', fontFamily: 'inherit' }}

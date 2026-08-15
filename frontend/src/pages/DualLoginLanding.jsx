@@ -337,12 +337,12 @@ export const DualLoginLanding = () => {
             <form onSubmit={handleRegisterSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>Full Name *</label>
-                <input type="text" required placeholder="e.g. Ramesh Pawar" value={regName} onChange={(e) => setRegName(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }} />
+                <input type="text" required placeholder="" value={regName} onChange={(e) => setRegName(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }} />
               </div>
 
               <div>
                 <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>Mobile Number *</label>
-                <input type="tel" required placeholder="e.g. 9876543210" value={regMobile} onChange={(e) => setRegMobile(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }} />
+                <input type="tel" required placeholder="" value={regMobile} onChange={(e) => setRegMobile(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }} />
               </div>
 
               <div>

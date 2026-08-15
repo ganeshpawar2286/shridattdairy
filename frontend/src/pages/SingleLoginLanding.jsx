@@ -263,7 +263,7 @@ export const SingleLoginLanding = () => {
                   <input
                     type="text"
                     required
-                    placeholder="e.g. Ramesh Pawar"
+                    placeholder=""
                     value={regName}
                     onChange={(e) => setRegName(e.target.value)}
                     style={{ width: '100%', padding: '12px 14px 12px 42px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '0.95rem', outline: 'none' }}
@@ -280,7 +280,7 @@ export const SingleLoginLanding = () => {
                   <input
                     type="tel"
                     required
-                    placeholder="e.g. 9876543210"
+                    placeholder=""
                     value={regMobile}
                     onChange={(e) => setRegMobile(e.target.value)}
                     style={{ width: '100%', padding: '12px 14px 12px 42px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '0.95rem', outline: 'none' }}

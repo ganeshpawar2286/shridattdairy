@@ -153,7 +153,7 @@ export const CustomerOrders = () => {
               <form onSubmit={handleAddressSave} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <textarea
                   rows="4"
-                  placeholder="Enter full street, village/city, landmark (e.g. Near Bus Stand, Ingali / Chikkodi)"
+                  placeholder="Enter full street, village/city, landmark"
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
                   style={{ width: '100%', padding: '12px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '0.92rem', outline: 'none', fontFamily: 'inherit' }}

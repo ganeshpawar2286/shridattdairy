@@ -133,7 +133,7 @@ export const Checkout = () => {
                   <input
                     type="text"
                     required
-                    placeholder="e.g. Ramesh Pawar"
+                    placeholder=""
                     value={customerName}
                     onChange={(e) => setCustomerName(e.target.value)}
                     style={{
@@ -154,7 +154,7 @@ export const Checkout = () => {
                   <input
                     type="tel"
                     required
-                    placeholder="e.g. 9876543210"
+                    placeholder=""
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     style={{
@@ -176,7 +176,7 @@ export const Checkout = () => {
                 <textarea
                   required
                   rows="3"
-                  placeholder="Enter full address, village/city, landmark (e.g. Near Bus Stand, Ingali / Chikkodi)"
+                  placeholder="Enter full address, village/city, landmark"
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
                   style={{

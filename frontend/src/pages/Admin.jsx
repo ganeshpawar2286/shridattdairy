@@ -250,7 +250,7 @@ export const Admin = () => {
               <input
                 type="tel"
                 required
-                placeholder="Admin Mobile Number (e.g. 9999999999)"
+                placeholder="Admin Mobile Number"
                 value={mobile}
                 onChange={(e) => setMobile(e.target.value)}
                 style={{

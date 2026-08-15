@@ -322,7 +322,7 @@ export const AuthGate = () => {
                   <input
                     type="text"
                     required
-                    placeholder="e.g. 7795687471 or admin@sdkas.com"
+                    placeholder=""
                     value={adminIdentifier}
                     onChange={(e) => setAdminIdentifier(e.target.value)}
                     style={{ width: '100%', padding: '12px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '0.95rem', outline: 'none' }}

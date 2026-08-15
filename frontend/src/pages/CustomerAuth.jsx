@@ -177,7 +177,7 @@ export const CustomerAuth = () => {
                   <input
                     type="text"
                     required
-                    placeholder="e.g. Ramesh Pawar"
+                    placeholder=""
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     style={{
@@ -202,7 +202,7 @@ export const CustomerAuth = () => {
                 <input
                   type="tel"
                   required
-                  placeholder="e.g. 9481327296"
+                  placeholder=""
                   value={mobile}
                   onChange={(e) => setMobile(e.target.value)}
                   style={{
@@ -261,7 +261,7 @@ export const CustomerAuth = () => {
                   <MapPin size={18} style={{ position: 'absolute', left: '14px', top: '14px', color: '#94a3b8' }} />
                   <textarea
                     rows="3"
-                    placeholder="Enter village/city, landmark (e.g. Near Bus Stand, Ingali)"
+                    placeholder="Enter village/city, landmark"
                     value={address}
                     onChange={(e) => setAddress(e.target.value)}
                     style={{
