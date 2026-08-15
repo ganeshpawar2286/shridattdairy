@@ -244,7 +244,6 @@ export const AuthGate = () => {
                     <input
                       type="text"
                       required
-                      placeholder="Enter your name"
                       value={custName}
                       onChange={(e) => setCustName(e.target.value)}
                       style={{ width: '100%', padding: '12px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '0.95rem', outline: 'none' }}
