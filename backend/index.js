@@ -18,17 +18,18 @@ import { Customer } from './models/Customer.js';
 import { Admin } from './models/Admin.js';
 import { Contact } from './models/Contact.js';
 
-dotenv.config();
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+dotenv.config({ path: path.resolve(__dirname, '.env') });
+dotenv.config({ path: path.resolve(__dirname, '..', '.env') });
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 const IS_VERCEL = Boolean(process.env.VERCEL);
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
 const JWT_SECRET = process.env.JWT_SECRET || 'sdkas_dairy_secret_jwt_key_2026';
-const MONGODB_URI = process.env.MONGODB_URI;
+const MONGODB_URI = process.env.MONGODB_URI || process.env.MONGO_URI || '';
 const CLOUDINARY_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_API_KEY = process.env.CLOUDINARY_API_KEY;
 const CLOUDINARY_API_SECRET = process.env.CLOUDINARY_API_SECRET;
@@ -104,18 +105,37 @@ if (CLOUDINARY_CLOUD_NAME && CLOUDINARY_API_KEY && CLOUDINARY_API_SECRET) {
 }
 
 // MongoDB Connection Setup
-let isMongoConnected = false;
+let isMongoConnected = mongoose.connection.readyState === 1;
+
+const ensureMongoConnection = async () => {
+  if (mongoose.connection.readyState === 1) {
+    isMongoConnected = true;
+    return true;
+  }
+
+  if (!MONGODB_URI) {
+    isMongoConnected = false;
+    return false;
+  }
+
+  try {
+    await mongoose.connect(MONGODB_URI, {
+      serverSelectionTimeoutMS: 20000,
+      autoIndex: true
+    });
+    isMongoConnected = true;
+    console.log('✅ Connected to MongoDB Atlas persistent cloud database.');
+    await seedMongoData();
+    return true;
+  } catch (err) {
+    isMongoConnected = false;
+    console.error('❌ MongoDB Atlas Connection Error:', err.message);
+    return false;
+  }
+};
 
 if (MONGODB_URI) {
-  mongoose.connect(MONGODB_URI)
-    .then(() => {
-      isMongoConnected = true;
-      console.log('✅ Connected to MongoDB Atlas persistent cloud database.');
-      seedMongoData();
-    })
-    .catch(err => {
-      console.error('❌ MongoDB Atlas Connection Error:', err.message);
-    });
+  ensureMongoConnection().catch(() => {});
 } else {
   console.log('ℹ️ MONGODB_URI not set. Operating with local JSON storage fallback.');
   if (IS_VERCEL) {
@@ -393,14 +413,15 @@ app.get('/api/customer/orders', async (req, res) => {
   const { mobile, phone, userId } = req.query;
   const searchNum = String(mobile || phone || '').replace(/\D/g, '');
 
-if (!isMongoConnected && IS_VERCEL) {
+const mongoReady = await ensureMongoConnection();
+if (!mongoReady && IS_VERCEL) {
   return res.status(503).json({
     success: false,
     message: 'Order history is not available because MONGODB_URI is not configured in Vercel.'
   });
 }
 
-if (isMongoConnected) {
+if (mongoReady) {
   const filter = {};
   if (searchNum) filter.$or = [{ phone: new RegExp(searchNum) }, { mobile: new RegExp(searchNum) }];
   if (userId) filter.customerId = userId;
@@ -514,7 +535,8 @@ app.post('/api/orders', async (req, res) => {
     return res.status(400).json({ success: false, message: 'Missing order details' });
   }
 
-if (!isMongoConnected && IS_VERCEL) {
+const mongoReady = await ensureMongoConnection();
+if (!mongoReady && IS_VERCEL) {
   return res.status(503).json({
     success: false,
     message: 'Order storage is not configured on Vercel. Set MONGODB_URI in Vercel Environment Variables to save orders to MongoDB Atlas.'
@@ -538,7 +560,7 @@ const orderData = {
   createdAt: new Date().toISOString()
 };
 
-if (isMongoConnected) {
+if (mongoReady) {
   const newOrder = await Order.create(orderData);
   return res.status(201).json({ success: true, orderId, order: newOrder });
 } else {
@@ -551,13 +573,14 @@ if (isMongoConnected) {
 
 // 13. GET ALL ORDERS (Admin Only)
 app.get('/api/admin/orders', checkAdminAuth, async (req, res) => {
-  if (!isMongoConnected && IS_VERCEL) {
+  const mongoReady = await ensureMongoConnection();
+  if (!mongoReady && IS_VERCEL) {
     return res.status(503).json({
       success: false,
       message: 'Admin order listing needs MONGODB_URI configured in Vercel. Orders cannot persist without MongoDB storage.'
     });
   }
-  if (isMongoConnected) {
+  if (mongoReady) {
     const orders = await Order.find().sort({ createdAt: -1 });
     return res.json(orders);
   } else {
