@@ -25,6 +25,7 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+const IS_VERCEL = Boolean(process.env.VERCEL);
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
 const JWT_SECRET = process.env.JWT_SECRET || 'sdkas_dairy_secret_jwt_key_2026';
 const MONGODB_URI = process.env.MONGODB_URI;
@@ -116,7 +117,10 @@ if (MONGODB_URI) {
       console.error('❌ MongoDB Atlas Connection Error:', err.message);
     });
 } else {
-  console.log('ℹ️ MONGODB_URI not set. Operating with local JSON storage fallback. Set MONGODB_URI in .env for persistent cloud storage.');
+  console.log('ℹ️ MONGODB_URI not set. Operating with local JSON storage fallback.');
+  if (IS_VERCEL) {
+    console.warn('⚠️ Vercel detected without MONGODB_URI. Orders will not persist across requests because JSON storage is not reliable in serverless hosting. Set MONGODB_URI in Vercel Environment Variables.');
+  }
 }
 
 // Helper functions for reading/writing JSON files safely
@@ -389,21 +393,28 @@ app.get('/api/customer/orders', async (req, res) => {
   const { mobile, phone, userId } = req.query;
   const searchNum = String(mobile || phone || '').replace(/\D/g, '');
 
-  if (isMongoConnected) {
-    const filter = {};
-    if (searchNum) filter.$or = [{ phone: new RegExp(searchNum) }, { mobile: new RegExp(searchNum) }];
-    if (userId) filter.customerId = userId;
-    const orders = await Order.find(filter).sort({ createdAt: -1 });
-    return res.json(orders);
-  } else {
-    const orders = readJSON(ORDERS_FILE);
-    const filtered = orders.filter(o => {
-      if (searchNum && (String(o.phone || '').replace(/\D/g, '').includes(searchNum) || String(o.mobile || '').replace(/\D/g, '').includes(searchNum))) return true;
-      if (userId && o.customerId === userId) return true;
-      return false;
-    });
-    return res.json(filtered);
-  }
+if (!isMongoConnected && IS_VERCEL) {
+  return res.status(503).json({
+    success: false,
+    message: 'Order history is not available because MONGODB_URI is not configured in Vercel.'
+  });
+}
+
+if (isMongoConnected) {
+  const filter = {};
+  if (searchNum) filter.$or = [{ phone: new RegExp(searchNum) }, { mobile: new RegExp(searchNum) }];
+  if (userId) filter.customerId = userId;
+  const orders = await Order.find(filter).sort({ createdAt: -1 });
+  return res.json(orders);
+} else {
+  const orders = readJSON(ORDERS_FILE);
+  const filtered = orders.filter(o => {
+    if (searchNum && (String(o.phone || '').replace(/\D/g, '').includes(searchNum) || String(o.mobile || '').replace(/\D/g, '').includes(searchNum))) return true;
+    if (userId && o.customerId === userId) return true;
+    return false;
+  });
+  return res.json(filtered);
+}
 });
 
 // 7. GET PRODUCTS (Public)
@@ -503,36 +514,49 @@ app.post('/api/orders', async (req, res) => {
     return res.status(400).json({ success: false, message: 'Missing order details' });
   }
 
-  const orderId = `SDKAS-${Date.now().toString().slice(-6)}`;
-  const orderData = {
-    id: orderId,
-    customerId: customerId || '',
-    customerName,
-    phone: phone || mobile,
-    mobile: mobile || phone,
-    address,
-    orderType: orderType || 'Retail',
-    items,
-    subtotal: Number(subtotal),
-    grandTotal: Number(grandTotal),
-    paymentMethod: paymentMethod || 'Cash on Delivery',
-    status: 'Pending',
-    createdAt: new Date().toISOString()
-  };
+if (!isMongoConnected && IS_VERCEL) {
+  return res.status(503).json({
+    success: false,
+    message: 'Order storage is not configured on Vercel. Set MONGODB_URI in Vercel Environment Variables to save orders to MongoDB Atlas.'
+  });
+}
 
-  if (isMongoConnected) {
-    const newOrder = await Order.create(orderData);
-    return res.status(201).json({ success: true, orderId, order: newOrder });
-  } else {
-    const orders = readJSON(ORDERS_FILE);
-    orders.unshift(orderData);
-    writeJSON(ORDERS_FILE, orders);
-    return res.status(201).json({ success: true, orderId, order: orderData });
-  }
+const orderId = `SDKAS-${Date.now().toString().slice(-6)}`;
+const orderData = {
+  id: orderId,
+  customerId: customerId || '',
+  customerName,
+  phone: phone || mobile,
+  mobile: mobile || phone,
+  address,
+  orderType: orderType || 'Retail',
+  items,
+  subtotal: Number(subtotal),
+  grandTotal: Number(grandTotal),
+  paymentMethod: paymentMethod || 'Cash on Delivery',
+  status: 'Pending',
+  createdAt: new Date().toISOString()
+};
+
+if (isMongoConnected) {
+  const newOrder = await Order.create(orderData);
+  return res.status(201).json({ success: true, orderId, order: newOrder });
+} else {
+  const orders = readJSON(ORDERS_FILE);
+  orders.unshift(orderData);
+  writeJSON(ORDERS_FILE, orders);
+  return res.status(201).json({ success: true, orderId, order: orderData });
+}
 });
 
 // 13. GET ALL ORDERS (Admin Only)
 app.get('/api/admin/orders', checkAdminAuth, async (req, res) => {
+  if (!isMongoConnected && IS_VERCEL) {
+    return res.status(503).json({
+      success: false,
+      message: 'Admin order listing needs MONGODB_URI configured in Vercel. Orders cannot persist without MongoDB storage.'
+    });
+  }
   if (isMongoConnected) {
     const orders = await Order.find().sort({ createdAt: -1 });
     return res.json(orders);

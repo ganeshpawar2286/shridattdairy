@@ -318,25 +318,14 @@ export const uploadProductImage = async (formData) => {
 // --- ORDERS API ---
 
 export const placeOrder = async (orderData) => {
-  try {
-    const res = await fetch(`${API_BASE}/orders`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(orderData)
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || 'Failed to place order');
-    return data;
-  } catch (err) {
-    const offlineOrderId = `SDKAS-${Date.now().toString().slice(-6)}`;
-    const offlineOrder = {
-      id: offlineOrderId,
-      createdAt: new Date().toISOString(),
-      ...orderData,
-      status: 'Pending'
-    };
-    return { success: true, orderId: offlineOrderId, order: offlineOrder };
-  }
+  const res = await fetch(`${API_BASE}/orders`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(orderData)
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Failed to place order');
+  return data;
 };
 
 export const fetchOrders = async () => {
