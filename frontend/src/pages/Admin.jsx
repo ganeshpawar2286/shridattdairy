@@ -522,86 +522,136 @@ export const Admin = () => {
         {/* TAB 2: CUSTOMER ORDERS */}
         {activeTab === 'orders' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            {/* PHASE 4 NOTE (FUTURE EXPANSION): Live GPS delivery tracking will render moving driver marker here */}
             {orders.length === 0 ? (
               <div style={{ background: '#ffffff', padding: '3rem', textAlign: 'center', borderRadius: '20px', border: '1px solid #e2e8f0' }}>
                 No customer orders received yet.
               </div>
             ) : (
-              orders.map(o => (
-                <div key={o.id} style={{
-                  background: '#ffffff',
-                  borderRadius: '20px',
-                  border: '1px solid #e2e8f0',
-                  padding: '1.8rem',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.03)'
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '1rem', borderBottom: '1px solid #f1f5f9', paddingBottom: '1rem' }}>
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <span style={{ fontSize: '1.2rem', fontWeight: 800, fontFamily: 'monospace', color: '#1b5e20' }}>
-                          {o.id}
-                        </span>
-                        <span className={`badge ${o.orderType === 'Wholesale' ? 'badge-wholesale' : 'badge-retail'}`}>
-                          {o.orderType} Order
-                        </span>
-                        <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
-                          {new Date(o.createdAt).toLocaleString()}
-                        </span>
+              orders.map(o => {
+                const lat = o.deliveryAddress?.latitude || 16.5682;
+                const lng = o.deliveryAddress?.longitude || 74.6534;
+                const villageName = o.deliveryAddress?.village || 'Ingali';
+                const pincodeVal = o.deliveryAddress?.pincode || '591242';
+                const currentStatus = o.deliveryStatus || o.status || 'Placed';
+
+                return (
+                  <div key={o.id} style={{
+                    background: '#ffffff',
+                    borderRadius: '20px',
+                    border: '1px solid #e2e8f0',
+                    padding: '1.8rem',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.03)'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '1rem', borderBottom: '1px solid #f1f5f9', paddingBottom: '1rem' }}>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <span style={{ fontSize: '1.2rem', fontWeight: 800, fontFamily: 'monospace', color: '#1b5e20' }}>
+                            {o.id}
+                          </span>
+                          <span className={`badge ${o.orderType === 'Wholesale' ? 'badge-wholesale' : 'badge-retail'}`}>
+                            {o.orderType} Order
+                          </span>
+                          <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                            {new Date(o.createdAt).toLocaleString()}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#1e293b', marginTop: '4px' }}>
+                          {o.customerName} — <a href={`tel:${o.phone}`} style={{ color: '#1b5e20' }}>📞 {o.phone}</a>
+                        </div>
+                        <div style={{ fontSize: '0.88rem', color: '#64748b', marginTop: '2px' }}>
+                          📍 {o.address}
+                        </div>
+                        <div style={{ fontSize: '0.8rem', color: '#1b5e20', fontWeight: 600, marginTop: '2px' }}>
+                          Village: <strong>{villageName}</strong> | PIN Code: <strong>{pincodeVal}</strong> (Chikkodi Taluka)
+                        </div>
                       </div>
-                      <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#1e293b', marginTop: '4px' }}>
-                        {o.customerName} — <a href={`tel:${o.phone}`} style={{ color: '#1b5e20' }}>📞 {o.phone}</a>
-                      </div>
-                      <div style={{ fontSize: '0.88rem', color: '#64748b', marginTop: '2px' }}>
-                        📍 {o.address}
+
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <label style={{ fontSize: '0.85rem', fontWeight: 700, color: '#475569' }}>Delivery Status:</label>
+                          <select
+                            value={currentStatus}
+                            onChange={(e) => handleOrderStatusChange(o.id, e.target.value)}
+                            style={{
+                              padding: '8px 12px',
+                              borderRadius: '10px',
+                              border: '1.5px solid #cbd5e1',
+                              fontWeight: 800,
+                              fontSize: '0.88rem',
+                              background: currentStatus === 'Delivered' ? '#e8f5e9' : currentStatus === 'Out for Delivery' ? '#e0f2fe' : currentStatus === 'Preparing' ? '#fef3c7' : currentStatus === 'Confirmed' ? '#e3f2fd' : '#fff3e0',
+                              color: currentStatus === 'Delivered' ? '#1b5e20' : currentStatus === 'Out for Delivery' ? '#0369a1' : currentStatus === 'Preparing' ? '#92400e' : currentStatus === 'Confirmed' ? '#1565c0' : '#e65100'
+                            }}
+                          >
+                            <option value="Placed">Placed</option>
+                            <option value="Confirmed">Confirmed</option>
+                            <option value="Preparing">Preparing</option>
+                            <option value="Out for Delivery">Out for Delivery</option>
+                            <option value="Delivered">Delivered</option>
+                            <option value="Cancelled">Cancelled</option>
+                          </select>
+                        </div>
+
+                        {/* Open in Google Maps Link Button */}
+                        <a
+                          href={`https://www.google.com/maps?q=${lat},${lng}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{
+                            background: '#e8f5e9',
+                            color: '#1b5e20',
+                            border: '1px solid #c8e6c9',
+                            padding: '6px 12px',
+                            borderRadius: '8px',
+                            fontSize: '0.8rem',
+                            fontWeight: 700,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            textDecoration: 'none'
+                          }}
+                        >
+                          🗺️ Open Location in Google Maps ({lat.toFixed(4)}, {lng.toFixed(4)})
+                        </a>
                       </div>
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#475569' }}>Order Status:</label>
-                      <select
-                        value={o.status}
-                        onChange={(e) => handleOrderStatusChange(o.id, e.target.value)}
-                        style={{
-                          padding: '8px 12px',
-                          borderRadius: '10px',
-                          border: '1px solid #cbd5e1',
-                          fontWeight: 700,
-                          fontSize: '0.88rem',
-                          background: o.status === 'Delivered' ? '#e8f5e9' : o.status === 'Confirmed' ? '#e3f2fd' : '#fff3e0',
-                          color: o.status === 'Delivered' ? '#1b5e20' : o.status === 'Confirmed' ? '#1565c0' : '#e65100'
-                        }}
-                      >
-                        <option value="Pending">Pending</option>
-                        <option value="Confirmed">Confirmed</option>
-                        <option value="Delivered">Delivered</option>
-                        <option value="Cancelled">Cancelled</option>
-                      </select>
+                    {/* Location Map Preview */}
+                    <div style={{ marginBottom: '1rem', height: '140px', borderRadius: '12px', overflow: 'hidden', border: '1px solid #cbd5e1' }}>
+                      <iframe
+                        title={`Location Map ${o.id}`}
+                        width="100%"
+                        height="100%"
+                        frameBorder="0"
+                        src={`https://maps.google.com/maps?q=${lat},${lng}&z=14&output=embed`}
+                        allowFullScreen
+                      />
                     </div>
-                  </div>
 
-                  {/* Order Items Table */}
-                  <div style={{ background: '#f8fafc', borderRadius: '12px', padding: '1rem', marginBottom: '1rem' }}>
-                    <div style={{ fontWeight: 700, fontSize: '0.85rem', color: '#64748b', marginBottom: '8px' }}>
-                      ITEMS ORDERED ({o.items?.length || 0}):
+                    {/* Order Items Table */}
+                    <div style={{ background: '#f8fafc', borderRadius: '12px', padding: '1rem', marginBottom: '1rem' }}>
+                      <div style={{ fontWeight: 700, fontSize: '0.85rem', color: '#64748b', marginBottom: '8px' }}>
+                        ITEMS ORDERED ({o.items?.length || 0}):
+                      </div>
+                      <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        {o.items?.map((item, idx) => (
+                          <li key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
+                            <span>{item.name} ({item.quantity} × ₹{item.unitPrice}/{item.unit})</span>
+                            <strong>₹{item.subtotal}</strong>
+                          </li>
+                        ))}
+                      </ul>
                     </div>
-                    <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                      {o.items?.map((item, idx) => (
-                        <li key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
-                          <span>{item.name} ({item.quantity} × ₹{item.unitPrice}/{item.unit})</span>
-                          <strong>₹{item.subtotal}</strong>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
 
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.95rem' }}>
-                    <div>Payment Method: <strong>{o.paymentMethod}</strong></div>
-                    <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#1b5e20', fontFamily: "'Outfit', sans-serif" }}>
-                      Grand Total: ₹{o.grandTotal}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.95rem' }}>
+                      <div>Payment Method: <strong>{o.paymentMethod}</strong></div>
+                      <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#1b5e20', fontFamily: "'Outfit', sans-serif" }}>
+                        Grand Total: ₹{o.grandTotal}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         )}

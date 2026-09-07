@@ -1,15 +1,25 @@
 # Shri Datta Krushi Abhivrudhi Sangh, Ingali - Dairy E-Commerce Website
 
-A modern, responsive, full-stack e-commerce web application with **MongoDB Atlas Cloud Database**, **Cloudinary Cloud Image Storage**, and decoupled **Frontend** and **Backend** architecture.
+A modern, responsive, full-stack e-commerce web application with **MongoDB Atlas Cloud Database**, **Cloudinary Cloud Image Storage**, **Delivery Area Restriction (Chikkodi Taluka)**, **Google Maps Pin Drop Picker**, and multi-step **Order Status Tracking**.
 
 ---
 
-## ☁️ Persistent Cloud Infrastructure Overview
+## 📍 Delivery Area Restriction & Location Validation
 
-- **Database**: MongoDB Atlas (Cloud NoSQL Database)
-- **Image Storage**: Cloudinary (Cloud Media Storage & CDN)
-- **Authentication**: JWT Tokens + bcrypt Password Hashing
-- **Deployment Resilience**: All products, customer orders, user accounts, and image uploads persist across server deploys, restarts, and host switches!
+- **Allowed Region**: Orders are strictly restricted to **Chikkodi Taluka, Belagavi District, Karnataka** (59 master villages including Ingali `591242`, Chikkodi `591201`, etc.).
+- **Master List**: `backend/data/deliveryAreas.json` (dynamic list accessible via `GET /api/delivery-areas`).
+- **Validation**: Enforced on both frontend checkout and backend API (`POST /api/orders`).
+- **Google Maps Pin Drop Picker**: Customers select their exact delivery pin drop location with latitude and longitude.
+
+---
+
+## 🚚 Order Status Tracking System
+
+Multi-stage order lifecycle:
+`Placed` ➔ `Confirmed` ➔ `Preparing` ➔ `Out for Delivery` ➔ `Delivered` (or `Cancelled`)
+
+- **Admin Orders Portal**: Includes status dropdown and map preview link opening exact coordinates in Google Maps (`https://www.google.com/maps?q=<lat>,<lng>`).
+- **Customer My Orders Portal**: Vertical tracking timeline displaying live progress and timestamps for every stage from `deliveryHistory`.
 
 ---
 
@@ -19,25 +29,25 @@ A modern, responsive, full-stack e-commerce web application with **MongoDB Atlas
 ecommerce/
 ├── package.json               # Root launcher (runs frontend & API together)
 ├── README.md
-├── api/                       # Entry point for the old-style backend folder layout
-│   └── index.js               # Boots the Express API from backend/
 ├── backend/                   # Node.js + Express Backend REST API
 │   ├── .env.example           # Environment variables template
 │   ├── index.js               # API Server routes & cloud database connections
-│   ├── migrate.js             # One-time JSON to MongoDB Atlas migration script
 │   ├── models/                # Mongoose Models (Product, Order, Customer, Admin, Contact)
-│   ├── data/                  # Seed JSON files
+│   ├── data/
+│   │   ├── deliveryAreas.json # Master 59 Villages & PIN codes list
+│   │   ├── products.json
+│   │   └── orders.json
 │   └── uploads/
 └── frontend/                  # React (Vite) Frontend Application
-    ├── .env.example           # Production API URL template
+    ├── .env.example           # Production API URL & Google Maps key template
     ├── vite.config.js
-    ├── index.html
     └── src/
         ├── App.jsx
         ├── components/
-        ├── context/           # CartContext & AuthContext
-        ├── pages/             # Home, Shop, Cart, Checkout, CustomerAuth, CustomerOrders, Admin
-        └── services/          # API Service layer
+        │   ├── LocationPickerMap.jsx # Interactive Map location picker
+        │   └── Navbar.jsx
+        ├── pages/             # Home, Shop, Cart, Checkout, CustomerOrders, Admin
+        └── services/          # API Service layer (api.js)
 ```
 
 ---
@@ -49,49 +59,27 @@ ecommerce/
 2. Create a **Free Shared Cluster (M0)**.
 3. Under **Database Access**, create a database user (e.g. username `datta_admin` and password).
 4. Under **Network Access**, click **Add IP Address** and choose `0.0.0.0/0` (Allow Access from Anywhere).
-5. Click **Connect** -> **Drivers** -> Copy your Connection String:
+5. Copy your Connection String:
    ```
    mongodb+srv://datta_admin:<password>@cluster0.mongodb.net/shri_datta_dairy?retryWrites=true&w=majority
    ```
 
-### 2. Setting Up Free Cloudinary Image Storage
-1. Go to [Cloudinary](https://cloudinary.com/) and sign up for a free account.
-2. On your Cloudinary Dashboard, copy your:
-   - **Cloud Name** (`CLOUDINARY_CLOUD_NAME`)
-   - **API Key** (`CLOUDINARY_API_KEY`)
-   - **API Secret** (`CLOUDINARY_API_SECRET`)
+### 2. Setting Up Cloudinary Image Storage
+1. Sign up on [Cloudinary](https://cloudinary.com/).
+2. Copy your **Cloud Name**, **API Key**, and **API Secret**.
 
-### 3. Setting Environment Variables
-Create a `.env` file in the `backend/` directory using `backend/.env.example` as a guide:
-
-```env
-PORT=5000
-JWT_SECRET=your_secret_jwt_key_here
-MONGODB_URI=mongodb+srv://datta_admin:your_password@cluster0.mongodb.net/shri_datta_dairy?retryWrites=true&w=majority
-CLOUDINARY_CLOUD_NAME=your_cloud_name
-CLOUDINARY_API_KEY=your_api_key
-CLOUDINARY_API_SECRET=your_api_secret
-```
-
-On production hosting platforms (Render, Railway, Vercel, Heroku), add these exact environment variable names in the hosting provider's Dashboard settings!
+### 3. Setting Up Google Maps API Key (Optional for Custom Map Tiles)
+1. Go to [Google Cloud Console](https://console.cloud.google.com/).
+2. Enable **Maps JavaScript API** and **Geocoding API**.
+3. Create an API Key and add it to `frontend/.env`:
+   ```env
+   VITE_GOOGLE_MAPS_API_KEY=your_google_maps_api_key_here
+   ```
+   *(If not set, the app uses standard interactive map embeds automatically!)*
 
 ---
 
-## 🚚 One-Time Data Migration Script (`migrate.js`)
-
-To push all your existing product catalog (Peda, Khova, Basundi, Kalakand, Curd, Shrikhand, Milk Cake, Milk, Kunda, Ghee, Lassi, Paneer, Butter) and user accounts into MongoDB Atlas automatically:
-
-```bash
-cd backend
-node migrate.js
-```
-
-Upon completion, you will see:
-`🎉 ALL DATA MIGRATED TO MONGODB ATLAS SUCCESSFULLY!`
-
----
-
-## 🚀 How to Run locally
+## 🚀 How to Run Locally
 
 ```bash
 # Install dependencies in root, backend, and frontend
@@ -102,4 +90,4 @@ npm run dev
 ```
 
 - **Customer Site**: [http://localhost:5173](http://localhost:5173)
-- **Hidden Admin Portal**: [http://localhost:5173/admin](http://localhost:5173/admin) (Mobile: `9999999999` / Password: `admin123`)
+- **Admin Portal**: [http://localhost:5173/admin](http://localhost:5173/admin) (Mobile: `7795687471` / Password: `Ganesh@2286`)

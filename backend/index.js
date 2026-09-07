@@ -48,6 +48,7 @@ const ORDERS_FILE = path.join(DATA_DIR, 'orders.json');
 const CONTACTS_FILE = path.join(DATA_DIR, 'contacts.json');
 const CUSTOMERS_FILE = path.join(DATA_DIR, 'customers.json');
 const ADMINS_FILE = path.join(DATA_DIR, 'admins.json');
+const DELIVERY_AREAS_FILE = path.join(DATA_DIR, 'deliveryAreas.json');
 const PUBLIC_IMAGES_DIR = path.join(__dirname, '..', 'frontend', 'public', 'images');
 
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -528,47 +529,88 @@ app.post('/api/admin/upload', checkAdminAuth, uploadMiddleware.single('image'), 
   res.json({ success: true, imagePath, imageUrl: imagePath });
 });
 
+// 11.5 GET ALLOWED DELIVERY AREAS (Chikkodi Taluka)
+app.get('/api/delivery-areas', (req, res) => {
+  const deliveryAreas = readJSON(DELIVERY_AREAS_FILE);
+  res.json(deliveryAreas);
+});
+
 // 12. PLACE NEW ORDER (Public / Customer)
 app.post('/api/orders', async (req, res) => {
-  const { customerId, customerName, phone, mobile, address, orderType, items, subtotal, grandTotal, paymentMethod } = req.body;
-  if (!customerName || (!phone && !mobile) || !address || !items || !items.length) {
-    return res.status(400).json({ success: false, message: 'Missing order details' });
+  const { customerId, customerName, phone, mobile, address, orderType, items, subtotal, grandTotal, paymentMethod, village, pincode, latitude, longitude, deliveryAddress } = req.body;
+  if (!customerName || (!phone && !mobile) || (!address && !deliveryAddress?.fullAddress) || !items || !items.length) {
+    return res.status(400).json({ success: false, message: 'Missing required order details.' });
   }
 
-const mongoReady = await ensureMongoConnection();
-if (!mongoReady && IS_VERCEL) {
-  return res.status(503).json({
-    success: false,
-    message: 'Order storage is not configured on Vercel. Set MONGODB_URI in Vercel Environment Variables to save orders to MongoDB Atlas.'
-  });
-}
+  // Validate Delivery Area (Village + PIN Code in Chikkodi Taluka)
+  const allowedAreas = readJSON(DELIVERY_AREAS_FILE);
+  const submittedVillage = String(village || deliveryAddress?.village || '').trim();
+  const submittedPincode = String(pincode || deliveryAddress?.pincode || '').trim();
 
-const orderId = `SDKAS-${Date.now().toString().slice(-6)}`;
-const orderData = {
-  id: orderId,
-  customerId: customerId || '',
-  customerName,
-  phone: phone || mobile,
-  mobile: mobile || phone,
-  address,
-  orderType: orderType || 'Retail',
-  items,
-  subtotal: Number(subtotal),
-  grandTotal: Number(grandTotal),
-  paymentMethod: paymentMethod || 'Cash on Delivery',
-  status: 'Pending',
-  createdAt: new Date().toISOString()
-};
+  const isValidArea = allowedAreas.some(area =>
+    area.village.toLowerCase() === submittedVillage.toLowerCase() &&
+    area.pincode === submittedPincode
+  );
 
-if (mongoReady) {
-  const newOrder = await Order.create(orderData);
-  return res.status(201).json({ success: true, orderId, order: newOrder });
-} else {
-  const orders = readJSON(ORDERS_FILE);
-  orders.unshift(orderData);
-  writeJSON(ORDERS_FILE, orders);
-  return res.status(201).json({ success: true, orderId, order: orderData });
-}
+  if (!isValidArea) {
+    return res.status(400).json({
+      success: false,
+      message: 'Sorry, we currently do not deliver to this location. Delivery is only available within Chikkodi Taluka, Belagavi District.'
+    });
+  }
+
+  const mongoReady = await ensureMongoConnection();
+  if (!mongoReady && IS_VERCEL) {
+    return res.status(503).json({
+      success: false,
+      message: 'Order storage is not configured on Vercel. Set MONGODB_URI in Vercel Environment Variables to save orders to MongoDB Atlas.'
+    });
+  }
+
+  const orderId = `SDKAS-${Date.now().toString().slice(-6)}`;
+
+  const deliveryAddressData = {
+    fullAddress: address || deliveryAddress?.fullAddress || '',
+    village: submittedVillage,
+    taluka: 'Chikkodi',
+    district: 'Belagavi',
+    state: 'Karnataka',
+    pincode: submittedPincode,
+    latitude: Number(latitude || deliveryAddress?.latitude || 16.5682),
+    longitude: Number(longitude || deliveryAddress?.longitude || 74.6534)
+  };
+
+  const initialStatus = 'Placed';
+  const initialHistory = [{ status: initialStatus, timestamp: new Date() }];
+
+  const orderData = {
+    id: orderId,
+    customerId: customerId || '',
+    customerName,
+    phone: phone || mobile,
+    mobile: mobile || phone,
+    address: `${deliveryAddressData.fullAddress}, ${deliveryAddressData.village}, Chikkodi, Belagavi, Karnataka - ${deliveryAddressData.pincode}`,
+    deliveryAddress: deliveryAddressData,
+    orderType: orderType || 'Retail',
+    items,
+    subtotal: Number(subtotal),
+    grandTotal: Number(grandTotal),
+    paymentMethod: paymentMethod || 'Cash on Delivery',
+    status: initialStatus,
+    deliveryStatus: initialStatus,
+    deliveryHistory: initialHistory,
+    createdAt: new Date().toISOString()
+  };
+
+  if (mongoReady) {
+    const newOrder = await Order.create(orderData);
+    return res.status(201).json({ success: true, orderId, order: newOrder });
+  } else {
+    const orders = readJSON(ORDERS_FILE);
+    orders.unshift(orderData);
+    writeJSON(ORDERS_FILE, orders);
+    return res.status(201).json({ success: true, orderId, order: orderData });
+  }
 });
 
 // 13. GET ALL ORDERS (Admin Only)
@@ -588,27 +630,79 @@ app.get('/api/admin/orders', checkAdminAuth, async (req, res) => {
   }
 });
 
-// 14. UPDATE ORDER STATUS (Admin Only)
-app.put('/api/admin/orders/:id', checkAdminAuth, async (req, res) => {
+// 14. UPDATE ORDER STATUS & HISTORY (Admin Only)
+app.put('/api/admin/orders/:id/status', checkAdminAuth, async (req, res) => {
   const orderId = req.params.id;
-  const { status } = req.body;
+  const { status, deliveryStatus } = req.body;
+  const newStatus = deliveryStatus || status;
 
-  if (isMongoConnected) {
-    const updated = await Order.findOneAndUpdate(
-      { $or: [{ id: orderId }, { _id: mongoose.Types.ObjectId.isValid(orderId) ? orderId : null }] },
-      { status },
-      { new: true }
-    );
-    if (!updated) return res.status(404).json({ success: false, message: 'Order not found' });
-    sendWhatsAppNotification(updated, status).catch(() => {});
-    return res.json({ success: true, order: updated });
+  if (!newStatus) return res.status(400).json({ success: false, message: 'Status parameter is required.' });
+
+  const mongoReady = await ensureMongoConnection();
+  if (mongoReady) {
+    const order = await Order.findOne({
+      $or: [{ id: orderId }, { _id: mongoose.Types.ObjectId.isValid(orderId) ? orderId : null }]
+    });
+
+    if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+
+    order.status = newStatus;
+    order.deliveryStatus = newStatus;
+    if (!order.deliveryHistory) order.deliveryHistory = [];
+    order.deliveryHistory.push({ status: newStatus, timestamp: new Date() });
+    await order.save();
+
+    sendWhatsAppNotification(order, newStatus).catch(() => {});
+    return res.json({ success: true, order });
   } else {
     const orders = readJSON(ORDERS_FILE);
     const idx = orders.findIndex(o => o.id === orderId);
     if (idx === -1) return res.status(404).json({ success: false, message: 'Order not found' });
-    orders[idx].status = status;
+
+    orders[idx].status = newStatus;
+    orders[idx].deliveryStatus = newStatus;
+    if (!orders[idx].deliveryHistory) orders[idx].deliveryHistory = [];
+    orders[idx].deliveryHistory.push({ status: newStatus, timestamp: new Date().toISOString() });
     writeJSON(ORDERS_FILE, orders);
-    sendWhatsAppNotification(orders[idx], status).catch(() => {});
+
+    sendWhatsAppNotification(orders[idx], newStatus).catch(() => {});
+    return res.json({ success: true, order: orders[idx] });
+  }
+});
+
+app.put('/api/admin/orders/:id', checkAdminAuth, async (req, res) => {
+  const orderId = req.params.id;
+  const { status, deliveryStatus } = req.body;
+  const newStatus = deliveryStatus || status;
+
+  if (isMongoConnected) {
+    const order = await Order.findOne({
+      $or: [{ id: orderId }, { _id: mongoose.Types.ObjectId.isValid(orderId) ? orderId : null }]
+    });
+
+    if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+
+    if (newStatus && newStatus !== order.deliveryStatus) {
+      order.status = newStatus;
+      order.deliveryStatus = newStatus;
+      if (!order.deliveryHistory) order.deliveryHistory = [];
+      order.deliveryHistory.push({ status: newStatus, timestamp: new Date() });
+    }
+    await order.save();
+    sendWhatsAppNotification(order, order.status).catch(() => {});
+    return res.json({ success: true, order });
+  } else {
+    const orders = readJSON(ORDERS_FILE);
+    const idx = orders.findIndex(o => o.id === orderId);
+    if (idx === -1) return res.status(404).json({ success: false, message: 'Order not found' });
+    if (newStatus && newStatus !== orders[idx].deliveryStatus) {
+      orders[idx].status = newStatus;
+      orders[idx].deliveryStatus = newStatus;
+      if (!orders[idx].deliveryHistory) orders[idx].deliveryHistory = [];
+      orders[idx].deliveryHistory.push({ status: newStatus, timestamp: new Date().toISOString() });
+    }
+    writeJSON(ORDERS_FILE, orders);
+    sendWhatsAppNotification(orders[idx], orders[idx].status).catch(() => {});
     return res.json({ success: true, order: orders[idx] });
   }
 });

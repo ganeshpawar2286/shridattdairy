@@ -1,30 +1,63 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { ShieldCheck, Truck, CreditCard, ArrowLeft, Copy, Check, QrCode, UserCheck } from 'lucide-react';
+import { ShieldCheck, Truck, CreditCard, ArrowLeft, Copy, Check, QrCode, MapPin, AlertCircle } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
-import { placeOrder } from '../services/api';
+import { placeOrder, fetchDeliveryAreas } from '../services/api';
+import { LocationPickerMap } from '../components/LocationPickerMap';
 
 export const Checkout = () => {
   const { cart, pricingMode, getUnitPrice, cartSubtotal, clearCart } = useCart();
   const { user } = useAuth();
   const navigate = useNavigate();
 
+  // Delivery Areas
+  const [deliveryAreas, setDeliveryAreas] = useState([]);
+  const [selectedVillage, setSelectedVillage] = useState('Ingali');
+  const [pincode, setPincode] = useState('591242');
+  const [streetAddress, setStreetAddress] = useState(user?.address || '');
+  const [latitude, setLatitude] = useState(16.5682);
+  const [longitude, setLongitude] = useState(74.6534);
+
   const [customerName, setCustomerName] = useState(user?.name || '');
-  const [phone, setPhone] = useState(user?.phone || user?.emailOrMobile || '');
-  const [address, setAddress] = useState(user?.address || '');
+  const [phone, setPhone] = useState(user?.mobile || user?.phone || '');
   const [orderType, setOrderType] = useState(pricingMode === 'wholesale' ? 'Wholesale' : 'Retail');
-  const [paymentMethod, setPaymentMethod] = useState('Cash on Delivery'); // Cash on Delivery or UPI Payment
+  const [paymentMethod, setPaymentMethod] = useState('Cash on Delivery');
   const [copiedUpi, setCopiedUpi] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [validationError, setValidationError] = useState('');
 
   const upiId = '7795687471@rbl';
+
+  useEffect(() => {
+    fetchDeliveryAreas().then(areas => {
+      setDeliveryAreas(areas);
+      // If user has saved village, match it
+      if (areas.length > 0) {
+        const found = areas.find(a => a.village === 'Ingali') || areas[0];
+        setSelectedVillage(found.village);
+        setPincode(found.pincode);
+      }
+    }).catch(err => console.error(err));
+  }, []);
 
   if (cart.length === 0) {
     navigate('/cart');
     return null;
   }
+
+  const handleVillageChange = (villageName) => {
+    setSelectedVillage(villageName);
+    const found = deliveryAreas.find(a => a.village.toLowerCase() === villageName.toLowerCase());
+    if (found) {
+      setPincode(found.pincode);
+      setValidationError('');
+    } else {
+      setPincode('');
+      setValidationError('Selected village is not within Chikkodi Taluka delivery zone.');
+    }
+  };
 
   const handleCopyUpi = () => {
     navigator.clipboard.writeText(upiId);
@@ -34,13 +67,24 @@ export const Checkout = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!customerName || !phone || !address) {
-      setErrorMsg('Please fill in your name, phone number, and delivery address.');
+    setErrorMsg('');
+
+    if (!customerName || !phone || !streetAddress || !selectedVillage || !pincode) {
+      setErrorMsg('Please fill in your name, phone number, village, and street address.');
+      return;
+    }
+
+    // Validate area
+    const isValid = deliveryAreas.some(a =>
+      a.village.toLowerCase() === selectedVillage.toLowerCase() && a.pincode === pincode
+    );
+
+    if (!isValid) {
+      setErrorMsg('Sorry, we currently do not deliver to this location. Delivery is available only in Chikkodi Taluka, Belagavi District.');
       return;
     }
 
     setSubmitting(true);
-    setErrorMsg('');
 
     const formattedItems = cart.map(item => ({
       productId: item.product.id,
@@ -53,10 +97,23 @@ export const Checkout = () => {
 
     const orderPayload = {
       customerId: user?.id || '',
-      customerEmail: user?.email || user?.emailOrMobile || '',
       customerName,
       phone,
-      address,
+      address: `${streetAddress}, ${selectedVillage}, Chikkodi, Belagavi, Karnataka - ${pincode}`,
+      village: selectedVillage,
+      pincode: pincode,
+      latitude: latitude,
+      longitude: longitude,
+      deliveryAddress: {
+        fullAddress: streetAddress,
+        village: selectedVillage,
+        taluka: 'Chikkodi',
+        district: 'Belagavi',
+        state: 'Karnataka',
+        pincode: pincode,
+        latitude: latitude,
+        longitude: longitude
+      },
       orderType,
       items: formattedItems,
       subtotal: cartSubtotal,
@@ -80,7 +137,6 @@ export const Checkout = () => {
     }
   };
 
-  // Generate UPI QR Code URL using quickchart QR API
   const upiQrUrl = `https://quickchart.io/qr?text=${encodeURIComponent(`upi://pay?pa=${upiId}&pn=ShriDattaDairy&am=${cartSubtotal}&cu=INR`)}&size=200`;
 
   return (
@@ -102,14 +158,17 @@ export const Checkout = () => {
             borderRadius: '12px',
             marginBottom: '1.5rem',
             fontSize: '0.9rem',
-            border: '1px solid #ffcdd2'
+            border: '1px solid #ffcdd2',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
           }}>
-            {errorMsg}
+            <AlertCircle size={18} /> {errorMsg}
           </div>
         )}
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2rem' }}>
-          {/* Customer Details Form */}
+          {/* Customer Details & Delivery Area Form */}
           <div style={{ gridColumn: 'span 2' }}>
             <form onSubmit={handleSubmit} style={{
               background: '#ffffff',
@@ -121,9 +180,14 @@ export const Checkout = () => {
               flexDirection: 'column',
               gap: '1.5rem'
             }}>
-              <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#1b5e20', borderBottom: '1px solid #f1f5f9', paddingBottom: '0.8rem' }}>
-                1. Customer & Delivery Information
-              </h2>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', borderBottom: '1px solid #f1f5f9', paddingBottom: '0.8rem' }}>
+                <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#1b5e20' }}>
+                  1. Customer & Delivery Information
+                </h2>
+                <span style={{ background: '#e8f5e9', color: '#1b5e20', fontSize: '0.78rem', fontWeight: 700, padding: '4px 10px', borderRadius: '12px', border: '1px solid #c8e6c9' }}>
+                  📍 Delivery Zone: Chikkodi Taluka, Belagavi
+                </span>
+              </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.2rem' }}>
                 <div>
@@ -133,7 +197,7 @@ export const Checkout = () => {
                   <input
                     type="text"
                     required
-                    placeholder=""
+                    placeholder="Enter your full name"
                     value={customerName}
                     onChange={(e) => setCustomerName(e.target.value)}
                     style={{
@@ -154,7 +218,7 @@ export const Checkout = () => {
                   <input
                     type="tel"
                     required
-                    placeholder=""
+                    placeholder="Enter 10-digit mobile number"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     style={{
@@ -169,16 +233,67 @@ export const Checkout = () => {
                 </div>
               </div>
 
+              {/* Village & PIN Code Dropdown */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.2rem' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.88rem', fontWeight: 700, color: '#1b5e20', marginBottom: '6px' }}>
+                    Village / Town (Chikkodi Taluka) *
+                  </label>
+                  <select
+                    value={selectedVillage}
+                    onChange={(e) => handleVillageChange(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      borderRadius: '10px',
+                      border: '1.5px solid #1b5e20',
+                      fontSize: '0.95rem',
+                      background: '#ffffff',
+                      outline: 'none',
+                      fontWeight: 600
+                    }}
+                  >
+                    {deliveryAreas.map((area, idx) => (
+                      <option key={idx} value={area.village}>
+                        {area.village} (PIN: {area.pincode})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.88rem', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+                    PIN Code (Auto-Filled) *
+                  </label>
+                  <input
+                    type="text"
+                    readOnly
+                    value={pincode}
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      borderRadius: '10px',
+                      border: '1px solid #cbd5e1',
+                      fontSize: '0.95rem',
+                      background: '#f1f5f9',
+                      fontWeight: 700,
+                      color: '#1b5e20',
+                      cursor: 'not-allowed'
+                    }}
+                  />
+                </div>
+              </div>
+
               <div>
                 <label style={{ display: 'block', fontSize: '0.88rem', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
-                  Delivery Address *
+                  Street Address / House No / Landmark *
                 </label>
                 <textarea
                   required
-                  rows="3"
-                  placeholder="Enter full address, village/city, landmark"
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
+                  rows="2"
+                  placeholder="Enter house number, street name, near landmark"
+                  value={streetAddress}
+                  onChange={(e) => setStreetAddress(e.target.value)}
                   style={{
                     width: '100%',
                     padding: '12px',
@@ -190,6 +305,18 @@ export const Checkout = () => {
                   }}
                 />
               </div>
+
+              {/* Phase 2: Google Maps Location Picker */}
+              <LocationPickerMap
+                village={selectedVillage}
+                pincode={pincode}
+                latitude={latitude}
+                longitude={longitude}
+                onChange={({ latitude: lat, longitude: lng }) => {
+                  setLatitude(lat);
+                  setLongitude(lng);
+                }}
+              />
 
               <div>
                 <label style={{ display: 'block', fontSize: '0.88rem', fontWeight: 600, color: '#334155', marginBottom: '8px' }}>
@@ -237,7 +364,6 @@ export const Checkout = () => {
               </h2>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
-                {/* Option A: Cash on Delivery */}
                 <div
                   onClick={() => setPaymentMethod('Cash on Delivery')}
                   style={{
@@ -245,8 +371,7 @@ export const Checkout = () => {
                     background: paymentMethod === 'Cash on Delivery' ? '#f4fbf5' : '#ffffff',
                     borderRadius: '14px',
                     padding: '16px',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease'
+                    cursor: 'pointer'
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
@@ -258,7 +383,6 @@ export const Checkout = () => {
                   </p>
                 </div>
 
-                {/* Option B: Direct UPI Payment */}
                 <div
                   onClick={() => setPaymentMethod('UPI Payment')}
                   style={{
@@ -266,8 +390,7 @@ export const Checkout = () => {
                     background: paymentMethod === 'UPI Payment' ? '#f4fbf5' : '#ffffff',
                     borderRadius: '14px',
                     padding: '16px',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease'
+                    cursor: 'pointer'
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
@@ -280,7 +403,6 @@ export const Checkout = () => {
                 </div>
               </div>
 
-              {/* UPI Box details if UPI Payment selected */}
               {paymentMethod === 'UPI Payment' && (
                 <div style={{
                   background: '#f8fafc',
@@ -296,13 +418,10 @@ export const Checkout = () => {
                   <div style={{ fontWeight: 800, color: '#1b5e20', fontSize: '1.1rem' }}>
                     Shri Datta Dairy Official UPI Payment
                   </div>
-
-                  {/* QR Code */}
-                  <div style={{ background: '#ffffff', padding: '12px', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.06)' }}>
+                  <div style={{ background: '#ffffff', padding: '12px', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
                     <img src={upiQrUrl} alt="UPI QR Code" style={{ width: '160px', height: '160px' }} />
                     <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '4px' }}>Scan with GPay / PhonePe / Paytm</div>
                   </div>
-
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#ffffff', border: '1px solid #cbd5e1', padding: '8px 16px', borderRadius: '12px' }}>
                     <span style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: '1.05rem', color: '#1e293b' }}>
                       {upiId}
@@ -318,9 +437,6 @@ export const Checkout = () => {
                         borderRadius: '8px',
                         fontSize: '0.8rem',
                         fontWeight: 700,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px',
                         cursor: 'pointer'
                       }}
                     >
@@ -328,19 +444,16 @@ export const Checkout = () => {
                       {copiedUpi ? 'Copied!' : 'Copy UPI'}
                     </button>
                   </div>
-                  <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
-                    You can pay ₹{cartSubtotal} to this UPI ID or scan QR code, then click "Confirm & Submit Order" below.
-                  </div>
                 </div>
               )}
 
               <button
                 type="submit"
-                disabled={submitting}
+                disabled={submitting || Boolean(validationError)}
                 className="btn btn-primary"
                 style={{ width: '100%', padding: '1rem', fontSize: '1.1rem', marginTop: '1rem' }}
               >
-                {submitting ? 'Processing Order...' : `Confirm & Submit Order (₹${cartSubtotal})`}
+                {submitting ? 'Processing Order...' : `Confirm & Place Order (₹${cartSubtotal})`}
               </button>
             </form>
           </div>

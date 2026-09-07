@@ -65,6 +65,72 @@ export const CustomerOrders = () => {
     }
   };
 
+  const STATUS_STAGES = ["Placed", "Confirmed", "Preparing", "Out for Delivery", "Delivered"];
+
+  const renderStatusTracker = (order) => {
+    const currentStatus = order.deliveryStatus || order.status || 'Placed';
+    if (currentStatus === 'Cancelled') {
+      return (
+        <div style={{ background: '#ffebee', color: '#c62828', padding: '12px 16px', borderRadius: '12px', fontWeight: 700, fontSize: '0.9rem', marginBottom: '1.2rem', border: '1px solid #ffcdd2', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <XCircle size={18} /> Order Cancelled
+        </div>
+      );
+    }
+
+    const currentIndex = STATUS_STAGES.indexOf(currentStatus);
+    const activeIndex = currentIndex === -1 ? 0 : currentIndex;
+
+    return (
+      <div style={{ background: '#f8fafc', borderRadius: '16px', padding: '1.2rem', marginBottom: '1.2rem', border: '1px solid #e2e8f0' }}>
+        <div style={{ fontSize: '0.85rem', fontWeight: 800, color: '#1b5e20', marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+          🚚 Live Delivery Tracker:
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative', flexWrap: 'wrap', gap: '10px' }}>
+          {STATUS_STAGES.map((stage, idx) => {
+            const isCompleted = idx <= activeIndex;
+            const isCurrent = idx === activeIndex;
+
+            // Find history timestamp for this stage
+            const historyObj = order.deliveryHistory?.find(h => h.status === stage);
+
+            return (
+              <div key={idx} style={{ flex: 1, minWidth: '100px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative', zIndex: 2 }}>
+                <div style={{
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '50%',
+                  background: isCompleted ? '#1b5e20' : '#ffffff',
+                  color: isCompleted ? '#ffffff' : '#94a3b8',
+                  border: isCompleted ? '2px solid #1b5e20' : '2px solid #cbd5e1',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontWeight: 800,
+                  fontSize: '0.85rem',
+                  boxShadow: isCurrent ? '0 0 0 4px rgba(27, 94, 32, 0.2)' : 'none',
+                  marginBottom: '6px'
+                }}>
+                  {isCompleted ? <CheckCircle2 size={18} /> : idx + 1}
+                </div>
+
+                <div style={{ fontSize: '0.8rem', fontWeight: isCurrent ? 800 : isCompleted ? 700 : 500, color: isCurrent ? '#1b5e20' : isCompleted ? '#334155' : '#94a3b8' }}>
+                  {stage}
+                </div>
+
+                {historyObj && (
+                  <div style={{ fontSize: '0.7rem', color: '#64748b', marginTop: '2px' }}>
+                    {new Date(historyObj.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
   const getStatusBadge = (status) => {
     const s = String(status || '').toLowerCase();
     if (s === 'delivered') {
@@ -74,10 +140,24 @@ export const CustomerOrders = () => {
         </span>
       );
     }
+    if (s === 'out for delivery') {
+      return (
+        <span style={{ background: '#e0f2fe', color: '#0369a1', border: '1px solid #bae6fd', padding: '4px 12px', borderRadius: '20px', fontWeight: 700, fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+          <Truck size={14} /> Out for Delivery
+        </span>
+      );
+    }
+    if (s === 'preparing') {
+      return (
+        <span style={{ background: '#fef3c7', color: '#92400e', border: '1px solid #fde68a', padding: '4px 12px', borderRadius: '20px', fontWeight: 700, fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+          <Clock size={14} /> Preparing
+        </span>
+      );
+    }
     if (s === 'confirmed') {
       return (
         <span style={{ background: '#e3f2fd', color: '#1565c0', border: '1px solid #bbdefb', padding: '4px 12px', borderRadius: '20px', fontWeight: 700, fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-          <Truck size={14} /> Order Confirmed
+          <CheckCircle2 size={14} /> Confirmed
         </span>
       );
     }
@@ -90,7 +170,7 @@ export const CustomerOrders = () => {
     }
     return (
       <span style={{ background: '#fff3e0', color: '#e65100', border: '1px solid #ffe0b2', padding: '4px 12px', borderRadius: '20px', fontWeight: 700, fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-        <Clock size={14} /> Pending Confirmation
+        <Clock size={14} /> Placed
       </span>
     );
   };
@@ -214,6 +294,70 @@ export const CustomerOrders = () => {
                         Total: ₹{order.grandTotal}
                       </div>
                     </div>
+
+                    {/* Order Status Delivery Tracker */}
+                    {renderStatusTracker(order)}
+
+                    {/* Track Order Location Map Section */}
+                    {(() => {
+                      const lat = order.deliveryAddress?.latitude || 16.5682;
+                      const lng = order.deliveryAddress?.longitude || 74.6534;
+                      const villageName = order.deliveryAddress?.village || 'Ingali';
+                      const pincodeVal = order.deliveryAddress?.pincode || '591242';
+
+                      return (
+                        <div style={{
+                          background: '#f8fafc',
+                          borderRadius: '16px',
+                          border: '1px solid #cbd5e1',
+                          padding: '1.2rem',
+                          marginBottom: '1rem'
+                        }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.8rem', flexWrap: 'wrap', gap: '8px' }}>
+                            <div>
+                              <div style={{ fontSize: '0.88rem', fontWeight: 800, color: '#1b5e20', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <MapPin size={16} /> Track Delivery Location Map
+                              </div>
+                              <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '2px' }}>
+                                Village: <strong>{villageName}</strong> | PIN Code: <strong>{pincodeVal}</strong> (Chikkodi Taluka, Belagavi)
+                              </div>
+                            </div>
+
+                            <a
+                              href={`https://www.google.com/maps?q=${lat},${lng}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{
+                                background: '#e8f5e9',
+                                color: '#1b5e20',
+                                border: '1px solid #c8e6c9',
+                                padding: '6px 12px',
+                                borderRadius: '8px',
+                                fontSize: '0.78rem',
+                                fontWeight: 700,
+                                textDecoration: 'none',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}
+                            >
+                              📍 View Pin in Google Maps ({lat.toFixed(4)}, {lng.toFixed(4)})
+                            </a>
+                          </div>
+
+                          <div style={{ height: '150px', borderRadius: '12px', overflow: 'hidden', border: '1px solid #cbd5e1' }}>
+                            <iframe
+                              title={`Customer Map ${order.id}`}
+                              width="100%"
+                              height="100%"
+                              frameBorder="0"
+                              src={`https://maps.google.com/maps?q=${lat},${lng}&z=15&output=embed`}
+                              allowFullScreen
+                            />
+                          </div>
+                        </div>
+                      );
+                    })()}
 
                     {/* Items Breakdown */}
                     <div style={{ background: '#f8fafc', borderRadius: '14px', padding: '1rem', marginBottom: '1rem' }}>

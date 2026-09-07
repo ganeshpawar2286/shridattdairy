@@ -348,6 +348,46 @@ export const updateOrderStatus = async (id, status) => {
   return data;
 };
 
+// --- DELIVERY AREAS API ---
+export const fetchDeliveryAreas = async () => {
+  try {
+    const res = await fetch(`${API_BASE}/delivery-areas`);
+    if (!res.ok) throw new Error('Failed to fetch delivery areas');
+    return await res.json();
+  } catch (err) {
+    console.warn('Using default delivery areas fallback:', err);
+    return [
+      { village: "Chikkodi", pincode: "591201" },
+      { village: "Ingali", pincode: "591242" },
+      { village: "Akol", pincode: "591211" },
+      { village: "Ankali", pincode: "591213" },
+      { village: "Bedkihal", pincode: "591214" },
+      { village: "Benadi", pincode: "591215" },
+      { village: "Hirekudi", pincode: "591247" },
+      { village: "Kabbur", pincode: "591222" },
+      { village: "Kallol", pincode: "591244" },
+      { village: "Khadaklat", pincode: "591228" },
+      { village: "Kothali", pincode: "591287" },
+      { village: "Manjari", pincode: "591213" },
+      { village: "Nez", pincode: "591239" },
+      { village: "Sadalga", "pincode": "591239" },
+      { village: "Shirguppi", "pincode": "591237" },
+      { village: "Yaksamba", "pincode": "591244" }
+    ];
+  }
+};
+
+export const updateOrderStatusHistory = async (id, status) => {
+  const res = await fetch(`${API_BASE}/admin/orders/${id}/status`, {
+    method: 'PUT',
+    headers: getAdminAuthHeader(),
+    body: JSON.stringify({ status, deliveryStatus: status })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Failed to update order status');
+  return data;
+};
+
 // --- CONTACT FORM API ---
 
 export const sendContactMessage = async (contactData) => {
